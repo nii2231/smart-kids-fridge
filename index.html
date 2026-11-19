@@ -1,0 +1,2298 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>스마트 키즈 냉장고 & AI 식단 대시보드 (Open Source)</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+  <!-- React & ReactDOM -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <!-- Babel Standalone -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    body {
+      font-family: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+  </style>
+</head>
+<body class="bg-[#F6F5F0] text-slate-800">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useMemo, useEffect, useRef, useCallback } = React;
+
+    // =========================================================================
+    // [오픈소스 공개 설정] 배포 전 아래 원작자명과 GitHub 주소를 본인 정보로 수정하세요.
+    // =========================================================================
+    const OPEN_SOURCE_AUTHOR = "nii2231";
+    const OPEN_SOURCE_REPO_URL = "https://github.com/nii2231/smart-kids-fridge";
+
+    const Icon = ({ name, className = "w-5 h-5" }) => {
+      const icons = {
+        fridge: <path d="M5 6a4 4 0 0 1 4-4h6a4 4 0 0 1 4 4v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6Zm0 4h14M9 14v3M9 6v2" />,
+        home: <><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></>,
+        utensils: <><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2v0a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/></>,
+        receipt: <><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/><path d="M12 17.5v-11"/></>,
+        settings: <><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></>,
+        sparkles: <><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></>,
+        plus: <><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></>,
+        trash: <><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></>,
+        x: <><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></>,
+        refresh: <><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></>,
+        external: <><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></>,
+        camera: <><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></>
+      };
+      return (
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+          {icons[name]}
+        </svg>
+      );
+    };
+
+    const MEAL_STYLE_OPTIONS = ['초간단', '간단', '한식'];
+    const MEAL_CONDITION_OPTIONS = ['과일 필수', '유제품 필수', '단백질 필수', '저탄수화물', '임박 재료 우선'];
+
+    const DEFAULT_MEAL_CONFIG = {
+      아침: { style: '간단', conditions: ['과일 필수', '유제품 필수'] },
+      점심: { style: '간단', conditions: ['단백질 필수'] },
+      저녁: { style: '한식', conditions: ['단백질 필수', '임박 재료 우선'] }
+    };
+
+    const DEFAULT_FAMILY_PROFILE = {
+      householdName: '우리집 스마트 냉장고',
+      kids: [
+        { id: 'kid-1', nickname: '첫째', birthYearMonth: '2021-07', mealStage: '어린이 일반식', attendsInstitution: true },
+        { id: 'kid-2', nickname: '둘째', birthYearMonth: '2025-02', mealStage: '저염 유아식', attendsInstitution: true }
+      ],
+      allergies: [],
+      customAllergyText: '',
+      mealConfig: DEFAULT_MEAL_CONFIG
+    };
+
+    function formatKidAgeLabel(birthYearMonth) {
+      if (!birthYearMonth || !birthYearMonth.includes('-')) return '';
+      const [yStr, mStr] = birthYearMonth.split('-');
+      const by = Number(yStr);
+      const bm = Number(mStr);
+      if (!by || !bm) return '';
+      const now = new Date();
+      const totalMonths = (now.getFullYear() - by) * 12 + (now.getMonth() + 1 - bm);
+      if (totalMonths < 0) return '출생 예정';
+      if (totalMonths <= 36) return `생후 ${totalMonths}개월`;
+      const age = Math.floor(totalMonths / 12);
+      return `만 ${age}세`;
+    }
+
+    function getTargetDateInfo(dayOffset = 0) {
+      const target = new Date();
+      target.setDate(target.getDate() + dayOffset);
+      const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
+      const dow = target.getDay();
+      const isWeekend = dow === 0 || dow === 6;
+      return {
+        label: dayOffset === 0 ? '오늘' : '내일',
+        dateStr: `${target.getMonth() + 1}/${target.getDate()}`,
+        dayName: dayNames[dow],
+        isWeekend
+      };
+    }
+
+    const INITIAL_INVENTORY = [
+      { id: '1', name: '무항생제 한우 다짐육', category: '정육/수산', quantity: 300, unit: 'g', daysLeft: 2, storage: '냉장' },
+      { id: '2', name: '유기농 애호박', category: '채소/과일', quantity: 2, unit: '개', daysLeft: 3, storage: '냉장' },
+      { id: '3', name: '동물복지 유정란', category: '유제품/계란', quantity: 12, unit: '구', daysLeft: 10, storage: '냉장' },
+      { id: '4', name: '국산콩 찌개용 두부', category: '유제품/계란', quantity: 1, unit: '모', daysLeft: 1, storage: '냉장' },
+      { id: '5', name: '친환경 당근', category: '채소/과일', quantity: 3, unit: '개', daysLeft: 6, storage: '냉장' },
+      { id: '6', name: '무농약 브로콜리', category: '채소/과일', quantity: 1, unit: '송이', daysLeft: 2, storage: '냉장' },
+      { id: '7', name: '노르웨이 생연어 필렛', category: '정육/수산', quantity: 250, unit: 'g', daysLeft: 1, storage: '냉장' },
+      { id: '8', name: '상하목장 유기농 우유', category: '유제품/계란', quantity: 900, unit: 'ml', daysLeft: 5, storage: '냉장' },
+      { id: '9', name: '세척 부사 사과', category: '채소/과일', quantity: 4, unit: '개', daysLeft: 8, storage: '냉장' },
+      { id: '10', name: '고당도 스위트 바나나', category: '채소/과일', quantity: 5, unit: '개', daysLeft: 3, storage: '실온' },
+      { id: '11', name: '우유 식빵', category: '곡류/기타', quantity: 6, unit: '장', daysLeft: 2, storage: '실온' },
+    ];
+
+    const INITIAL_MEALS_TODAY = [
+      {
+        type: '아침',
+        emoji: '🥪',
+        title: '에그 스크램블 토스트 & 스위트 바나나·우유',
+        mealStyle: '간단',
+        appliedConditions: ['과일 필수', '유제품 필수'],
+        includedFruit: '고당도 스위트 바나나',
+        ingredientsUsed: [
+          { name: '동물복지 유정란', amount: 3, unit: '구' },
+          { name: '우유 식빵', amount: 3, unit: '장' },
+          { name: '고당도 스위트 바나나', amount: 2, unit: '개' },
+          { name: '상하목장 유기농 우유', amount: 300, unit: 'ml' }
+        ],
+        reason: '간단 조리 스타일에 맞춰 임박한 식빵·바나나와 유제품(우유)을 한 번에 챙기는 아침 식단입니다.',
+        recipeQuery: '에그 스크램블 토스트 간단 레시피'
+      },
+      {
+        type: '점심',
+        emoji: '🍛',
+        title: '연어 애호박 야채볶음밥 & 맑은 두부국',
+        mealStyle: '간단',
+        appliedConditions: ['단백질 필수'],
+        includedFruit: '',
+        ingredientsUsed: [
+          { name: '노르웨이 생연어 필렛', amount: 150, unit: 'g' },
+          { name: '유기농 애호박', amount: 0.5, unit: '개' },
+          { name: '국산콩 찌개용 두부', amount: 0.5, unit: '모' }
+        ],
+        reason: '단백질 필수 조건을 반영해 생연어와 두부로 영양을 채우는 한 그릇 점심 메뉴입니다.',
+        recipeQuery: '연어 애호박 야채볶음밥 아기 유아식 레시피'
+      },
+      {
+        type: '저녁',
+        emoji: '🍲',
+        title: '한우 두부 완자전 & 구운 브로콜리 솥밥',
+        mealStyle: '한식',
+        appliedConditions: ['단백질 필수', '임박 재료 우선'],
+        includedFruit: '',
+        ingredientsUsed: [
+          { name: '무항생제 한우 다짐육', amount: 150, unit: 'g' },
+          { name: '국산콩 찌개용 두부', amount: 0.5, unit: '모' },
+          { name: '무농약 브로콜리', amount: 0.5, unit: '송이' }
+        ],
+        reason: '한식 밥상 스타일로 점심과 겹치지 않으면서 임박한 두부·한우·브로콜리를 우선 소진합니다.',
+        recipeQuery: '소고기 두부 완자전 유아식 레시피'
+      },
+      {
+        type: '간식',
+        emoji: '🍎',
+        title: '달콤한 찐 사과 스틱 & 유기농 우유',
+        mealStyle: '초간단',
+        appliedConditions: ['과일 필수'],
+        includedFruit: '세척 부사 사과',
+        ingredientsUsed: [
+          { name: '세척 부사 사과', amount: 1, unit: '개' },
+          { name: '상하목장 유기농 우유', amount: 250, unit: 'ml' }
+        ],
+        reason: '출출함을 달래주는 비타민·칼슘 충전 건강 간식입니다.',
+        recipeQuery: '아기 찐 사과 스틱 간식 만들기'
+      }
+    ];
+
+    const INITIAL_MEALS_TOMORROW = [
+      {
+        type: '아침',
+        emoji: '🥞',
+        title: '촉촉한 계란찜 모닝빵 & 세척 부사 사과',
+        mealStyle: '간단',
+        appliedConditions: ['과일 필수', '유제품 필수'],
+        includedFruit: '세척 부사 사과',
+        ingredientsUsed: [
+          { name: '동물복지 유정란', amount: 2, unit: '구' },
+          { name: '세척 부사 사과', amount: 1, unit: '개' },
+          { name: '상하목장 유기농 우유', amount: 200, unit: 'ml' }
+        ],
+        reason: '어제와 다른 메뉴로 부드러운 계란과 아삭한 사과, 우유를 곁들인 든든한 아침입니다.',
+        recipeQuery: '전자레인지 계란찜 아이 아침 레시피'
+      },
+      {
+        type: '점심',
+        emoji: '🍝',
+        title: '한우 당근 애호박 덮밥 & 계란 맑은국',
+        mealStyle: '간단',
+        appliedConditions: ['단백질 필수'],
+        includedFruit: '',
+        ingredientsUsed: [
+          { name: '무항생제 한우 다짐육', amount: 150, unit: 'g' },
+          { name: '친환경 당근', amount: 0.5, unit: '개' },
+          { name: '유기농 애호박', amount: 0.5, unit: '개' }
+        ],
+        reason: '채소와 한우 다짐육을 달달 볶아 아이들도 잘 먹는 영양 점심 한 그릇입니다.',
+        recipeQuery: '소고기 야채 덮밥 유아식 레시피'
+      },
+      {
+        type: '저녁',
+        emoji: '🐟',
+        title: '노르웨이 생연어 스테이크 & 당근 브로콜리 볶음',
+        mealStyle: '한식',
+        appliedConditions: ['단백질 필수', '임박 재료 우선'],
+        includedFruit: '',
+        ingredientsUsed: [
+          { name: '노르웨이 생연어 필렛', amount: 100, unit: 'g' },
+          { name: '무농약 브로콜리', amount: 0.5, unit: '송이' },
+          { name: '친환경 당근', amount: 0.5, unit: '개' }
+        ],
+        reason: '점심 소고기 메뉴와 겹치지 않도록 생연어 구이와 채소 반찬으로 차린 한식 저녁입니다.',
+        recipeQuery: '아기 연어 스테이크 구이 레시피'
+      },
+      {
+        type: '간식',
+        emoji: '🍌',
+        title: '스위트 바나나 우유 스무디',
+        mealStyle: '초간단',
+        appliedConditions: ['과일 필수'],
+        includedFruit: '고당도 스위트 바나나',
+        ingredientsUsed: [
+          { name: '고당도 스위트 바나나', amount: 1, unit: '개' },
+          { name: '상하목장 유기농 우유', amount: 200, unit: 'ml' }
+        ],
+        reason: '믹서로 30초 만에 완성하는 달콤한 오후 간식입니다.',
+        recipeQuery: '바나나 우유 스무디 만들기'
+      }
+    ];
+
+    const INITIAL_LOGS = [
+      { id: 'log-1', name: '동물복지 유정란', amount: 2, unit: '구', time: '오늘 08:30', note: '아침 식사 조리' }
+    ];
+
+    const SAMPLE_RECEIPT_TEXT = `[쿠팡 로켓프레시 주문내역]
+주문일시: 2026.11.19
+1. 곰곰 무항생제 한우 다짐육 300g x 1개
+2. 고당도 스위트 바나나 1송이 (약 6개)
+3. 설향 생딸기 500g x 1팩
+4. 삼립 부드러운 우유 식빵 1봉 (8장)
+5. 풀무원 국산콩 찌개용 두부 300g x 2모
+6. 상하목장 유기농 우유 900ml x 2개
+7. 무농약 시금치 200g x 1단`;
+
+    function App() {
+      const storageKey = 'smart_kids_fridge_opensource_v1';
+
+      const [cloudUrl, setCloudUrl] = useState(() => {
+        try {
+          const hashMatch = window.location.hash.match(/sync=([^&]+)/);
+          if (hashMatch && hashMatch[1]) {
+            const decoded = decodeURIComponent(hashMatch[1]);
+            localStorage.setItem('skf_custom_npoint_url', decoded);
+            return decoded;
+          }
+          return localStorage.getItem('skf_custom_npoint_url') || '';
+        } catch {
+          return '';
+        }
+      });
+      const [cloudUrlInput, setCloudUrlInput] = useState(cloudUrl);
+      const [syncStatus, setSyncStatus] = useState(cloudUrl ? 'syncing' : 'local');
+      const [lastSyncedLabel, setLastSyncedLabel] = useState('로컬 전용');
+      const lastUpdatedAtRef = useRef(0);
+      const isPushingRef = useRef(false);
+
+      const loadLocalBackup = () => {
+        try {
+          const saved = localStorage.getItem(storageKey);
+          return saved ? JSON.parse(saved) : null;
+        } catch {
+          return null;
+        }
+      };
+
+      const initialBackup = useMemo(() => loadLocalBackup(), []);
+
+      const [familyProfile, setFamilyProfile] = useState(() => {
+        const saved = initialBackup?.familyProfile;
+        if (!saved) return DEFAULT_FAMILY_PROFILE;
+        const normalizedKids = Array.isArray(saved.kids)
+          ? saved.kids.map((k) => ({
+              ...k,
+              attendsInstitution: k.attendsInstitution !== undefined ? k.attendsInstitution : true
+            }))
+          : DEFAULT_FAMILY_PROFILE.kids;
+        return {
+          ...DEFAULT_FAMILY_PROFILE,
+          ...saved,
+          kids: normalizedKids,
+          allergies: Array.isArray(saved.allergies) ? saved.allergies : [],
+          mealConfig: {
+            아침: { ...DEFAULT_MEAL_CONFIG.아침, ...(saved.mealConfig?.아침 || {}) },
+            점심: { ...DEFAULT_MEAL_CONFIG.점심, ...(saved.mealConfig?.점심 || {}) },
+            저녁: { ...DEFAULT_MEAL_CONFIG.저녁, ...(saved.mealConfig?.저녁 || {}) }
+          }
+        };
+      });
+
+      const [activeTab, setActiveTab] = useState('overview');
+      const [inventory, setInventory] = useState(() =>
+        Array.isArray(initialBackup?.inventory) ? initialBackup.inventory : INITIAL_INVENTORY
+      );
+      const [selectedCategory, setSelectedCategory] = useState('전체');
+      const [searchQuery, setSearchQuery] = useState('');
+      const [consumptionLogs, setConsumptionLogs] = useState(() =>
+        Array.isArray(initialBackup?.logs) ? initialBackup.logs : INITIAL_LOGS
+      );
+
+      const [receiptText, setReceiptText] = useState('');
+      const [receiptImageBase64, setReceiptImageBase64] = useState(null);
+      const [receiptImagePreview, setReceiptImagePreview] = useState(null);
+      const [isParsingReceipt, setIsParsingReceipt] = useState(false);
+      const [parsedItems, setParsedItems] = useState([]);
+      const [receiptError, setReceiptError] = useState('');
+      const [geminiApiKey, setGeminiApiKey] = useState(() => {
+        try {
+          return localStorage.getItem('skf_gemini_key') || '';
+        } catch {
+          return '';
+        }
+      });
+      const fileInputRef = useRef(null);
+
+      // 오늘(0)과 내일(1) 날짜별 독립 식단 상태
+      const [selectedDayOffset, setSelectedDayOffset] = useState(0);
+      const [mealsByOffset, setMealsByOffset] = useState(() => ({
+        0: Array.isArray(initialBackup?.mealPlan?.mealsByOffset?.[0])
+          ? initialBackup.mealPlan.mealsByOffset[0]
+          : Array.isArray(initialBackup?.mealPlan?.meals)
+          ? initialBackup.mealPlan.meals
+          : INITIAL_MEALS_TODAY,
+        1: Array.isArray(initialBackup?.mealPlan?.mealsByOffset?.[1])
+          ? initialBackup.mealPlan.mealsByOffset[1]
+          : INITIAL_MEALS_TOMORROW
+      }));
+      const [completedMealsByOffset, setCompletedMealsByOffset] = useState(() => ({
+        0: initialBackup?.mealPlan?.completedMealsByOffset?.[0] || initialBackup?.mealPlan?.completedMeals || {},
+        1: initialBackup?.mealPlan?.completedMealsByOffset?.[1] || {}
+      }));
+      const [isGeneratingMeals, setIsGeneratingMeals] = useState(false);
+
+      const meals = mealsByOffset[selectedDayOffset] || INITIAL_MEALS_TODAY;
+      const completedMeals = completedMealsByOffset[selectedDayOffset] || {};
+
+      const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+      const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
+      const [selectedRecipeMeal, setSelectedRecipeMeal] = useState(null);
+
+      const [newItem, setNewItem] = useState({
+        name: '',
+        category: '채소/과일',
+        quantity: 1,
+        unit: '개',
+        daysLeft: 5,
+        storage: '냉장'
+      });
+
+      const [toastMessage, setToastMessage] = useState(null);
+
+      const showToast = (message) => {
+        setToastMessage(message);
+        setTimeout(() => setToastMessage(null), 3000);
+      };
+
+      const todayInfo = useMemo(() => getTargetDateInfo(0), []);
+      const tomorrowInfo = useMemo(() => getTargetDateInfo(1), []);
+      const activeDateInfo = selectedDayOffset === 0 ? todayInfo : tomorrowInfo;
+
+      const hasHomeCareKid = useMemo(() => {
+        if (!Array.isArray(familyProfile.kids) || familyProfile.kids.length === 0) return false;
+        return familyProfile.kids.some((k) => k.attendsInstitution === false);
+      }, [familyProfile.kids]);
+
+      const shouldSkipLunch = !activeDateInfo.isWeekend && !hasHomeCareKid;
+
+      const saveAndSync = useCallback(
+        async (nextState) => {
+          const timestamp = Date.now();
+          lastUpdatedAtRef.current = timestamp;
+
+          const payload = {
+            familyProfile: nextState.familyProfile !== undefined ? nextState.familyProfile : familyProfile,
+            inventory: nextState.inventory,
+            logs: nextState.logs,
+            mealPlan: {
+              mealsByOffset: nextState.mealsByOffset || mealsByOffset,
+              completedMealsByOffset: nextState.completedMealsByOffset || completedMealsByOffset
+            },
+            geminiApiKey: nextState.geminiApiKey !== undefined ? nextState.geminiApiKey : geminiApiKey,
+            updatedAt: timestamp
+          };
+
+          try {
+            localStorage.setItem(storageKey, JSON.stringify(payload));
+          } catch {}
+
+          const targetUrl = nextState.cloudUrl !== undefined ? nextState.cloudUrl : cloudUrl;
+          if (!targetUrl || !targetUrl.startsWith('http')) {
+            setSyncStatus('local');
+            setLastSyncedLabel('브라우저 자동 저장');
+            return;
+          }
+
+          isPushingRef.current = true;
+          setSyncStatus('syncing');
+          try {
+            const res = await fetch(targetUrl, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload)
+            });
+            if (!res.ok) throw new Error('Cloud POST failed');
+            setSyncStatus('synced');
+            setLastSyncedLabel('방금 전');
+          } catch {
+            setSyncStatus('offline');
+            setLastSyncedLabel('오프라인 백업');
+          } finally {
+            setTimeout(() => {
+              isPushingRef.current = false;
+            }, 600);
+          }
+        },
+        [storageKey, familyProfile, geminiApiKey, cloudUrl, mealsByOffset, completedMealsByOffset]
+      );
+
+      const pullFromCloud = useCallback(
+        async (isManual = false) => {
+          if (!cloudUrl || !cloudUrl.startsWith('http')) {
+            setSyncStatus('local');
+            setLastSyncedLabel('브라우저 자동 저장');
+            return;
+          }
+          if (isPushingRef.current) return;
+          if (!isManual && (isAddModalOpen || (activeTab === 'receipt' && (receiptText.trim().length > 0 || receiptImageBase64)))) {
+            return;
+          }
+
+          if (isManual) setSyncStatus('syncing');
+
+          try {
+            const res = await fetch(`${cloudUrl}?t=${Date.now()}`, {
+              method: 'GET',
+              cache: 'no-store'
+            });
+            if (!res.ok) throw new Error('Cloud GET failed');
+            const remote = await res.json();
+
+            if (!remote || typeof remote !== 'object' || !remote.updatedAt) {
+              await saveAndSync({
+                familyProfile,
+                inventory,
+                logs: consumptionLogs,
+                mealsByOffset,
+                completedMealsByOffset
+              });
+              return;
+            }
+
+            if (remote.updatedAt > lastUpdatedAtRef.current) {
+              lastUpdatedAtRef.current = remote.updatedAt;
+              if (remote.familyProfile) setFamilyProfile((prev) => ({ ...prev, ...remote.familyProfile }));
+              if (Array.isArray(remote.inventory)) setInventory(remote.inventory);
+              if (Array.isArray(remote.logs)) setConsumptionLogs(remote.logs);
+              if (remote.mealPlan?.mealsByOffset) setMealsByOffset(remote.mealPlan.mealsByOffset);
+              if (remote.mealPlan?.completedMealsByOffset) setCompletedMealsByOffset(remote.mealPlan.completedMealsByOffset);
+              if (remote.geminiApiKey) {
+                setGeminiApiKey(remote.geminiApiKey);
+                try { localStorage.setItem('skf_gemini_key', remote.geminiApiKey); } catch {}
+              }
+              try {
+                localStorage.setItem(storageKey, JSON.stringify(remote));
+              } catch {}
+              if (isManual) showToast('공유 저장소에서 최신 데이터를 불러왔습니다!');
+            } else if (isManual) {
+              showToast('이미 최신 상태입니다!');
+            }
+
+            setSyncStatus('synced');
+            const now = new Date();
+            setLastSyncedLabel(
+              `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
+            );
+          } catch {
+            setSyncStatus('offline');
+            setLastSyncedLabel('오프라인 백업');
+          }
+        },
+        [cloudUrl, isAddModalOpen, activeTab, receiptText, receiptImageBase64, familyProfile, inventory, consumptionLogs, mealsByOffset, completedMealsByOffset, saveAndSync, storageKey]
+      );
+
+      useEffect(() => {
+        if (!cloudUrl) {
+          setSyncStatus('local');
+          setLastSyncedLabel('브라우저 자동 저장');
+          return;
+        }
+        pullFromCloud(false);
+        const timer = setInterval(() => pullFromCloud(false), 5000);
+        return () => clearInterval(timer);
+      }, [cloudUrl, pullFromCloud]);
+
+      const { totalItems, expiringItems } = useMemo(() => {
+        const urgent = inventory
+          .filter((item) => item.daysLeft <= 2)
+          .sort((a, b) => a.daysLeft - b.daysLeft);
+        return { totalItems: inventory.length, expiringItems: urgent };
+      }, [inventory]);
+
+      const filteredInventory = useMemo(() => {
+        return inventory
+          .filter((item) => {
+            const matchesCat = selectedCategory === '전체' || item.category === selectedCategory;
+            const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase());
+            return matchesCat && matchesSearch;
+          })
+          .sort((a, b) => a.daysLeft - b.daysLeft);
+      }, [inventory, selectedCategory, searchQuery]);
+
+      const handleConsume = (id, amountToSubtract, customNote = '직접 소진') => {
+        let addedLog = null;
+        const nextInventory = inventory
+          .map((item) => {
+            if (item.id !== id) return item;
+            const actualUsed = Math.min(item.quantity, amountToSubtract);
+            const nextQty = Number((item.quantity - actualUsed).toFixed(2));
+
+            if (actualUsed > 0) {
+              const now = new Date();
+              const timeStr = `오늘 ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+              addedLog = {
+                id: `log-${Date.now()}-${Math.random()}`,
+                name: item.name,
+                amount: actualUsed,
+                unit: item.unit,
+                time: timeStr,
+                note: customNote
+              };
+            }
+            return { ...item, quantity: nextQty };
+          })
+          .filter((item) => item.quantity > 0);
+
+        const nextLogs = addedLog ? [addedLog, ...consumptionLogs] : consumptionLogs;
+        setInventory(nextInventory);
+        if (addedLog) setConsumptionLogs(nextLogs);
+
+        saveAndSync({
+          inventory: nextInventory,
+          logs: nextLogs,
+          mealsByOffset,
+          completedMealsByOffset
+        });
+      };
+
+      const handleIncrease = (id, amountToAdd) => {
+        const nextInventory = inventory.map((item) =>
+          item.id === id ? { ...item, quantity: Number((item.quantity + amountToAdd).toFixed(2)) } : item
+        );
+        setInventory(nextInventory);
+        saveAndSync({
+          inventory: nextInventory,
+          logs: consumptionLogs,
+          mealsByOffset,
+          completedMealsByOffset
+        });
+      };
+
+      const handleDeleteAll = (item) => {
+        handleConsume(item.id, item.quantity, '전량 소진');
+        showToast(`'${item.name}' 재고를 모두 소진 처리했습니다.`);
+      };
+
+      const handleAddManualItem = (e) => {
+        e.preventDefault();
+        if (!newItem.name.trim()) return;
+        const existingIdx = inventory.findIndex(
+          (i) => i.name.trim() === newItem.name.trim() && i.unit === newItem.unit
+        );
+        let nextInventory;
+        if (existingIdx > -1) {
+          nextInventory = [...inventory];
+          nextInventory[existingIdx] = {
+            ...nextInventory[existingIdx],
+            quantity: Number((nextInventory[existingIdx].quantity + Number(newItem.quantity)).toFixed(2)),
+            daysLeft: Math.min(nextInventory[existingIdx].daysLeft, Number(newItem.daysLeft))
+          };
+        } else {
+          nextInventory = [
+            {
+              id: `item-${Date.now()}`,
+              ...newItem,
+              quantity: Number(newItem.quantity),
+              daysLeft: Number(newItem.daysLeft)
+            },
+            ...inventory
+          ];
+        }
+        setInventory(nextInventory);
+        saveAndSync({
+          inventory: nextInventory,
+          logs: consumptionLogs,
+          mealsByOffset,
+          completedMealsByOffset
+        });
+        showToast(`'${newItem.name}' ${newItem.quantity}${newItem.unit} 추가 완료!`);
+        setNewItem({ name: '', category: '채소/과일', quantity: 1, unit: '개', daysLeft: 5, storage: '냉장' });
+        setIsAddModalOpen(false);
+      };
+
+      // --- 영수증 이미지 업로드 & 파서 ---
+      const handleReceiptImageUpload = (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+          const dataUrl = reader.result;
+          setReceiptImagePreview(dataUrl);
+          setReceiptImageBase64({ mimeType: file.type || 'image/jpeg', data: dataUrl.split(',')[1] });
+          setReceiptError('');
+        };
+        reader.readAsDataURL(file);
+      };
+
+      const handleClearReceiptImage = () => {
+        setReceiptImagePreview(null);
+        setReceiptImageBase64(null);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+      };
+
+      const smartParseKoreanReceiptText = (rawText) => {
+        const headerFooterStopKeywords = [
+          '합계', '총구매액', '과세물품', '면세물품', '부가세', '받을금액', '결제금액',
+          '신용카드', '카드승인', '승인번호', '할부개월', '포인트', '적립', '교환', '환불',
+          '영수증', '거래일시', '계산원', 'POS', '사업자', '대표자', '전화', 'TEL', '주소'
+        ];
+        const storeMetaKeywords = [
+          '이마트', '롯데마트', '홈플러스', '트레이더스', '코스트코', '하나로마트', '노브랜드',
+          '쿠팡', '로켓프레시', '마켓컬리', '컬리', '새벽배송', '주문일시', '주문내역',
+          '배송비', '장바구니', '할인', '행사', '쿠폰', '증정', '에누리', '단가', '수량', '금액', '상품명'
+        ];
+        const nonFoodKeywords = [
+          '물티슈', '휴지', '화장지', '키친타올', '세제', '섬유유연제', '기저귀', '비닐', '종량제',
+          '수세미', '치약', '칫솔', '샴푸', '린스', '바디워시', '로션', '건전지', '호일', '랩', '장갑'
+        ];
+
+        const rawLines = rawText
+          .split('\n')
+          .map((l) => l.replace(/\s+/g, ' ').trim())
+          .filter((l) => l.length > 1);
+
+        const mergedEntries = [];
+        for (let i = 0; i < rawLines.length; i++) {
+          const line = rawLines[i];
+          if (mergedEntries.length > 0 && /^(합\s*계|총\s*액|결제금액|과세물품|신용카드|카드승인)/.test(line)) break;
+          if (
+            /\d{3}-\d{2}-\d{5}/.test(line) ||
+            /\d{2,3}-\d{3,4}-\d{4}/.test(line) ||
+            /^\d{4}[./-]\d{2}[./-]\d{2}/.test(line) ||
+            /^(서울|경기|인천|부산|대구|대전|광주|울산|세종|강원|충북|충남|전북|전남|경북|경남|제주).*(시|구|군|로|길)/.test(line)
+          ) continue;
+          if (/행사|할인|에누리|쿠폰/.test(line) && /-\s*[\d,]+/.test(line)) continue;
+          if (/^-\s*[\d,]+원?$/.test(line)) continue;
+
+          const barcodeLineMatch = line.match(/^(\d{8,14})\s+([\d,]+)\s+(\d+)\s+([\d,]+)$/);
+          if (barcodeLineMatch) {
+            if (mergedEntries.length > 0) mergedEntries[mergedEntries.length - 1].purchasedPacks = Number(barcodeLineMatch[3]) || 1;
+            continue;
+          }
+          if (/^\d{8,14}$/.test(line)) continue;
+          if (/^[\d,]+원?$/.test(line)) continue;
+          if (headerFooterStopKeywords.some((kw) => line.includes(kw) && line.length < 30)) continue;
+          if (storeMetaKeywords.some((kw) => line.startsWith(kw) || (line.includes(kw) && line.length < 24))) continue;
+          if (nonFoodKeywords.some((kw) => line.includes(kw))) continue;
+
+          let purchasedPacks = 1;
+          let textPart = line;
+          const sameLinePosMatch = line.match(/^(.+?)\s+[\d,]{3,}\s+(\d+)\s+[\d,]{3,}$/);
+          if (sameLinePosMatch) {
+            textPart = sameLinePosMatch[1];
+            purchasedPacks = Number(sameLinePosMatch[2]) || 1;
+          }
+          mergedEntries.push({ raw: textPart, purchasedPacks });
+        }
+
+        const results = [];
+        mergedEntries.forEach(({ raw, purchasedPacks }, idx) => {
+          let quantity = purchasedPacks;
+          let unit = '개';
+          let bundleSize = 1;
+
+          const packCountMatch = raw.match(/(\d+)\s*(?:개입|입|번들|팩입)/);
+          const xCountMatch = raw.match(/[xX*×]\s*(\d+)\s*(개|팩|봉|모|구|단|송이|병|통|캔|입)?/);
+          const parenCountMatch = raw.match(/\(약?\s*(\d+)\s*(장|구|개|입|봉|모)\)/);
+          const inlineUnitMatch = raw.match(/(\d+)\s*(모|구|봉|팩|송이|단|장)\b/);
+          const weightMatch = raw.match(/(\d+(?:\.\d+)?)\s*(g|kg|ml|L)\b/i);
+
+          if (packCountMatch) {
+            bundleSize = Number(packCountMatch[1]) || 1;
+            quantity = purchasedPacks * bundleSize;
+          } else if (parenCountMatch) {
+            bundleSize = Number(parenCountMatch[1]) || 1;
+            quantity = purchasedPacks * bundleSize;
+            unit = parenCountMatch[2] === '입' ? '개' : parenCountMatch[2];
+          } else if (xCountMatch) {
+            quantity = purchasedPacks * (Number(xCountMatch[1]) || 1);
+            if (xCountMatch[2] && xCountMatch[2] !== '입') unit = xCountMatch[2];
+            else if (inlineUnitMatch) unit = inlineUnitMatch[2];
+          } else if (inlineUnitMatch) {
+            bundleSize = Number(inlineUnitMatch[1]) || 1;
+            quantity = purchasedPacks * bundleSize;
+            unit = inlineUnitMatch[2];
+          } else if (weightMatch && !/(우유|두유|요거트|요구르트|음료|주스)/.test(raw)) {
+            const val = Number(weightMatch[1]);
+            const wUnit = weightMatch[2].toLowerCase();
+            if (wUnit === 'kg') { quantity = purchasedPacks * val * 1000; unit = 'g'; }
+            else if (wUnit === 'l') { quantity = purchasedPacks * val * 1000; unit = 'ml'; }
+            else { quantity = purchasedPacks * val; unit = wUnit; }
+          } else if (/(바나나우유|딸기우유|초코우유|커피우유|가공유)/.test(raw) && !/900ml|1L|1000ml/i.test(raw)) {
+            bundleSize = 4;
+            quantity = purchasedPacks * 4;
+          } else if (/(요구르트|엔요|야쿠르트)/.test(raw)) {
+            bundleSize = 5;
+            quantity = purchasedPacks * 5;
+          } else if (/(슬라이스\s*치즈|어린이\s*치즈|체다\s*치즈)/.test(raw)) {
+            bundleSize = 10;
+            quantity = purchasedPacks * 10;
+            unit = '장';
+          }
+
+          let cleanName = raw
+            .replace(/^\*?\d{1,3}[\.\)]?\s+/, '')
+            .replace(/\s+[A-Z]\d$/i, '')
+            .replace(/\[.*?\]/g, '')
+            .replace(/\(.*?\)/g, '')
+            .replace(/[xX*×]\s*\d+.*$/g, '')
+            .replace(/\s+\d+(?:개입|입|번들)\b/g, '')
+            .replace(/[\d,]{3,}원?.*$/g, '')
+            .replace(/\s+\d+(?:\.\d+)?\s*(g|kg|ml|L)\b/gi, '')
+            .replace(/\s+\d+\s*(모|구|봉|팩|송이|단|장)\b/g, '')
+            .trim();
+
+          if (!cleanName || cleanName.length < 2 || /^\d+$/.test(cleanName)) return;
+
+          let category = '채소/과일';
+          let estimatedExpiryDays = 5;
+          let storage = '냉장';
+
+          if (/(한우|소고기|돼지고기|삼겹살|목살|다짐육|안심|닭|오리|연어|고등어|갈치|새우|오징어|조개|전복|멸치|어묵|맛살|소시지|햄)/.test(cleanName)) {
+            category = '정육/수산';
+            estimatedExpiryDays = /(어묵|햄|소시지)/.test(cleanName) ? 7 : 2;
+          } else if (/(우유|두유|두부|계란|유정란|달걀|치즈|요거트|요구르트|버터|생크림|순두부)/.test(cleanName)) {
+            category = '유제품/계란';
+            estimatedExpiryDays = /두부/.test(cleanName) ? 3 : /(계란|유정란|달걀|치즈)/.test(cleanName) ? 12 : 7;
+          } else if (/(냉동|만두|돈까스|피자|아이스크림|볶음밥|너겟|핫도그)/.test(cleanName)) {
+            category = '냉동/가공';
+            storage = '냉동';
+            estimatedExpiryDays = 30;
+          } else if (/(식빵|빵|모닝빵|떡|쌀|잡곡|면|파스타|우동|국수|라면|김|참기름|간장|된장|고추장|케첩|마요네즈|시리얼|과자|초콜릿|킨더|젤리|사탕)/.test(cleanName)) {
+            category = '곡류/기타';
+            storage = '실온';
+            estimatedExpiryDays = /(식빵|모닝빵)/.test(cleanName) ? 4 : 30;
+          } else {
+            category = '채소/과일';
+            if (/(바나나|고구마|감자|양파|마늘|단호박)/.test(cleanName)) storage = '실온';
+            estimatedExpiryDays = /(딸기|시금치|상추|깻잎|숙주|콩나물|버섯|바나나)/.test(cleanName) ? 3 : 6;
+          }
+
+          results.push({
+            tempId: `smart-${Date.now()}-${idx}`,
+            name: cleanName,
+            category,
+            quantity,
+            unit,
+            bundleApplied: bundleSize > 1 ? bundleSize : null,
+            estimatedExpiryDays,
+            storage
+          });
+        });
+
+        return results;
+      };
+
+      const handleParseReceipt = async () => {
+        if (!receiptText.trim() && !receiptImageBase64) {
+          setReceiptError('영수증 사진을 올리거나 마트 앱 주문 내역 텍스트를 먼저 입력해 주세요.');
+          return;
+        }
+        setIsParsingReceipt(true);
+        setReceiptError('');
+        setParsedItems([]);
+
+        if (geminiApiKey && geminiApiKey.trim().startsWith('AIza')) {
+          try {
+            const parts = [
+              {
+                text: `한국 대형마트/온라인마트 영수증에서 실제 구매한 '식자재'만 추출하여 JSON 배열로 반환하세요. 매장명, 바코드, 가격, 할인 줄, 비식품은 제외하고 번들 상품(4입, 바나나우유 등)은 실제 낱개 총수량으로 계산하세요. 각 항목은 name, category("채소/과일"|"정육/수산"|"유제품/계란"|"냉동/가공"|"곡류/기타"), quantity, unit, estimatedExpiryDays, storage("냉장"|"냉동"|"실온")를 포함합니다.`
+              }
+            ];
+            if (receiptText.trim()) parts.push({ text: `\n[영수증 텍스트]\n${receiptText}` });
+            if (receiptImageBase64) parts.push({ inlineData: receiptImageBase64 });
+
+            const res = await fetch(
+              `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey.trim()}`,
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  contents: [{ parts }],
+                  generationConfig: { responseMimeType: 'application/json' }
+                })
+              }
+            );
+            if (!res.ok) throw new Error('Gemini API 호출 실패');
+            const data = await res.json();
+            const aiItems = JSON.parse(data?.candidates?.[0]?.content?.parts?.[0]?.text || '[]');
+            if (Array.isArray(aiItems) && aiItems.length > 0) {
+              setParsedItems(
+                aiItems.map((it, idx) => ({
+                  tempId: `ai-${Date.now()}-${idx}`,
+                  name: it.name || '식재료',
+                  category: it.category || '채소/과일',
+                  quantity: Number(it.quantity) || 1,
+                  unit: it.unit || '개',
+                  estimatedExpiryDays: Number(it.estimatedExpiryDays) || 5,
+                  storage: it.storage || '냉장'
+                }))
+              );
+              setIsParsingReceipt(false);
+              showToast(`✨ Gemini AI가 ${aiItems.length}개 식자재를 추출했습니다!`);
+              return;
+            }
+          } catch {
+            if (receiptImageBase64 && !receiptText.trim()) {
+              setIsParsingReceipt(false);
+              setReceiptError('영수증 사진 인식에 실패했습니다. API 키를 확인하거나 주문내역 텍스트를 붙여넣어 주세요.');
+              return;
+            }
+          }
+        } else if (receiptImageBase64 && !receiptText.trim()) {
+          setIsParsingReceipt(false);
+          setReceiptError('영수증 사진 자동 인식을 쓰려면 좌측 하단 [설정]에서 무료 Gemini API 키를 등록해 주세요!');
+          return;
+        }
+
+        setTimeout(() => {
+          const extracted = smartParseKoreanReceiptText(receiptText);
+          setParsedItems(extracted);
+          setIsParsingReceipt(false);
+          if (extracted.length === 0) {
+            setReceiptError('인식된 식자재 품목이 없습니다. 상품명이 포함된 줄을 입력해 주세요.');
+          } else {
+            showToast(`영수증에서 ${extracted.length}개 식자재를 자동 분류했습니다!`);
+          }
+        }, 350);
+      };
+
+      const handleUpdateParsedItem = (tempId, field, value) => {
+        setParsedItems((prev) =>
+          prev.map((item) => (item.tempId === tempId ? { ...item, [field]: value } : item))
+        );
+      };
+
+      const handleRemoveParsedItem = (tempId) => {
+        setParsedItems((prev) => prev.filter((item) => item.tempId !== tempId));
+      };
+
+      const handleConfirmAddParsedItems = () => {
+        if (parsedItems.length === 0) return;
+        const nextInv = [...inventory];
+        parsedItems.forEach((pItem) => {
+          const existingIdx = nextInv.findIndex(
+            (inv) => inv.name === pItem.name && inv.unit === pItem.unit
+          );
+          if (existingIdx > -1) {
+            nextInv[existingIdx] = {
+              ...nextInv[existingIdx],
+              quantity: Number((nextInv[existingIdx].quantity + Number(pItem.quantity)).toFixed(2)),
+              daysLeft: Math.min(nextInv[existingIdx].daysLeft, Number(pItem.estimatedExpiryDays))
+            };
+          } else {
+            nextInv.unshift({
+              id: `inv-${Date.now()}-${Math.random()}`,
+              name: pItem.name,
+              category: pItem.category,
+              quantity: Number(pItem.quantity),
+              unit: pItem.unit,
+              daysLeft: Number(pItem.estimatedExpiryDays),
+              storage: pItem.storage || '냉장'
+            });
+          }
+        });
+        setInventory(nextInv);
+        saveAndSync({
+          inventory: nextInv,
+          logs: consumptionLogs,
+          mealsByOffset,
+          completedMealsByOffset
+        });
+        showToast(`${parsedItems.length}개 식자재가 냉장고 재고에 반영되었습니다!`);
+        setParsedItems([]);
+        setReceiptText('');
+        handleClearReceiptImage();
+        setActiveTab('overview');
+      };
+
+      // --- AI 맞춤 식단 생성 (끼니별 스타일/선호조건 + 점심/저녁 중복 방지 + 오늘/내일 중복 방지) ---
+      const handleGenerateMeals = async () => {
+        setIsGeneratingMeals(true);
+
+        const cfg = familyProfile.mealConfig || DEFAULT_MEAL_CONFIG;
+        const allergyList = [
+          ...(familyProfile.allergies || []),
+          ...(familyProfile.customAllergyText ? [familyProfile.customAllergyText] : [])
+        ];
+        const kidsText = (familyProfile.kids || [])
+          .map(
+            (k) =>
+              `- ${k.nickname || '아이'}: ${formatKidAgeLabel(k.birthYearMonth) || '유아'} (${k.mealStage}, ${
+                k.attendsInstitution === false ? '가정 보육/평일 점심 집밥' : '기관 등원/평일 점심 급식'
+              })`
+          )
+          .join('\n');
+
+        const otherOffset = selectedDayOffset === 0 ? 1 : 0;
+        const otherDayTitles = (mealsByOffset[otherOffset] || []).map((m) => m.title).join(', ');
+        const inventorySummary = inventory
+          .map((i) => `- ${i.name}: ${i.quantity}${i.unit} (D-${i.daysLeft})`)
+          .join('\n');
+
+        if (geminiApiKey && geminiApiKey.trim().startsWith('AIza')) {
+          try {
+            const prompt = `당신은 가정식 및 아이 식단 전문가입니다.
+대상 날짜: ${activeDateInfo.label} (${activeDateInfo.dateStr} ${activeDateInfo.dayName}요일, ${activeDateInfo.isWeekend ? '주말' : '평일'})
+[가족 구성원]
+${kidsText || '- 일반 가정'}
+* 제외할 알레르기: ${allergyList.length > 0 ? allergyList.join(', ') : '없음'}
+* ${shouldSkipLunch ? '평일 기관 등원으로 점심 식단 제외 (아침, 저녁, 간식만 생성)' : '아침, 점심, 저녁, 간식 모두 생성'}
+
+[끼니별 스타일 및 선호 조건]
+- 아침: [${cfg.아침?.style || '간단'}] / 조건: ${(cfg.아침?.conditions || []).join(', ') || '자유'}
+- 점심: [${cfg.점심?.style || '간단'}] / 조건: ${(cfg.점심?.conditions || []).join(', ') || '자유'}
+- 저녁: [${cfg.저녁?.style || '한식'}] / 조건: ${(cfg.저녁?.conditions || []).join(', ') || '자유'}
+
+[중복 금지 규칙]
+1. 같은 날의 점심과 저녁 메뉴는 주재료와 조리법이 절대 겹치지 않게 서로 다른 요리로 구성하세요.
+2. ${otherOffset === 0 ? '오늘' : '내일'} 식단(${otherDayTitles})과도 메뉴명이 겹치지 않게 구성하세요.
+
+[현재 냉장고 재고]
+${inventorySummary}
+
+JSON 배열로 반환하세요. 각 원소는 type("아침"|"점심"|"저녁"|"간식"), emoji, title, mealStyle, appliedConditions(배열), includedFruit(문자열), reason, ingredientsUsed([{name, amount, unit}]), recipeQuery 를 포함해야 합니다.`;
+
+            const res = await fetch(
+              `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey.trim()}`,
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  contents: [{ parts: [{ text: prompt }] }],
+                  generationConfig: { responseMimeType: 'application/json' }
+                })
+              }
+            );
+            if (!res.ok) throw new Error('Meal API error');
+            const data = await res.json();
+            const generated = JSON.parse(data?.candidates?.[0]?.content?.parts?.[0]?.text || '[]');
+            if (Array.isArray(generated) && generated.length > 0) {
+              const nextMealsByOffset = { ...mealsByOffset, [selectedDayOffset]: generated };
+              const nextCompletedByOffset = { ...completedMealsByOffset, [selectedDayOffset]: {} };
+              setMealsByOffset(nextMealsByOffset);
+              setCompletedMealsByOffset(nextCompletedByOffset);
+              setIsGeneratingMeals(false);
+              saveAndSync({
+                inventory,
+                logs: consumptionLogs,
+                mealsByOffset: nextMealsByOffset,
+                completedMealsByOffset: nextCompletedByOffset
+              });
+              showToast(`✨ ${activeDateInfo.label} 맞춤 AI 식단이 생성되었습니다!`);
+              return;
+            }
+          } catch {}
+        }
+
+        // 내장 스마트 조합 엔진 (점심/저녁 중복 방지 + 오늘/내일 중복 방지)
+        setTimeout(() => {
+          const isAllergic = (name) => allergyList.some((al) => name.includes(al));
+          const safeInv = inventory.filter((i) => !isAllergic(i.name));
+
+          const fruits = safeInv.filter((i) => /(사과|바나나|딸기|포도|귤|배|수박|참외|블루베리)/.test(i.name));
+          const dairies = safeInv.filter((i) => /(우유|요거트|요구르트|치즈)/.test(i.name));
+          const proteins = safeInv.filter((i) => i.category === '정육/수산' || /(두부|계란|유정란)/.test(i.name));
+          const vegs = safeInv.filter((i) => i.category === '채소/과일' && !fruits.some((f) => f.id === i.id));
+
+          const chosenFruit = fruits[selectedDayOffset % Math.max(1, fruits.length)] || { name: '제철 과일', unit: '개' };
+          const chosenDairy = dairies[0] || { name: '우유', unit: 'ml' };
+          const lunchProtein = proteins[selectedDayOffset % Math.max(1, proteins.length)] || { name: '유정란', unit: '구' };
+          const dinnerProtein =
+            proteins.find((p) => p.name !== lunchProtein.name) ||
+            proteins[(selectedDayOffset + 1) % Math.max(1, proteins.length)] ||
+            { name: '두부', unit: '모' };
+
+          const veg1 = vegs[0] || { name: '애호박', unit: '개' };
+          const veg2 = vegs.find((v) => v.name !== veg1.name) || vegs[1] || { name: '당근', unit: '개' };
+
+          const bCfg = cfg.아침 || DEFAULT_MEAL_CONFIG.아침;
+          const lCfg = cfg.점심 || DEFAULT_MEAL_CONFIG.점심;
+          const dCfg = cfg.저녁 || DEFAULT_MEAL_CONFIG.저녁;
+
+          const buildTitleByStyle = (mealType, style, proteinItem, vegItem, conds) => {
+            const hasFruit = conds.includes('과일 필수');
+            const hasDairy = conds.includes('유제품 필수');
+            const suffix = [hasFruit ? chosenFruit.name : '', hasDairy ? chosenDairy.name : '']
+              .filter(Boolean)
+              .join('·');
+            const tail = suffix ? ` & ${suffix}` : '';
+
+            if (mealType === '아침') {
+              if (style === '초간단') return `구운 식빵·시리얼${tail}`;
+              if (style === '한식') return `${vegItem.name} 계란국 & 잡곡밥${tail}`;
+              return `촉촉한 스크램블 오픈 토스트${tail}`;
+            }
+            if (mealType === '점심') {
+              if (style === '초간단') return `${vegItem.name} 주먹밥 & 맑은국${tail}`;
+              if (style === '한식') return `${proteinItem.name} ${vegItem.name} 비빔밥 & 된장국${tail}`;
+              return `${proteinItem.name} ${vegItem.name} 한그릇 볶음밥${tail}`;
+            }
+            if (style === '초간단') return `${proteinItem.name} 덮밥 & 데친 ${vegItem.name}${tail}`;
+            if (style === '간단') return `${proteinItem.name} 야채 볶음면 & 샐러드${tail}`;
+            return `${proteinItem.name} 구이 & ${vegItem.name} 볶음 한식 밥상${tail}`;
+          };
+
+          const smartMeals = [
+            {
+              type: '아침',
+              emoji: bCfg.style === '한식' ? '🍚' : '🥪',
+              title: buildTitleByStyle('아침', bCfg.style, lunchProtein, veg1, bCfg.conditions || []),
+              mealStyle: bCfg.style,
+              appliedConditions: bCfg.conditions || [],
+              includedFruit: (bCfg.conditions || []).includes('과일 필수') ? chosenFruit.name : '',
+              ingredientsUsed: [
+                ...(bCfg.conditions || []).includes('과일 필수') ? [{ name: chosenFruit.name, amount: 1, unit: chosenFruit.unit }] : [],
+                ...(bCfg.conditions || []).includes('유제품 필수') ? [{ name: chosenDairy.name, amount: chosenDairy.unit === 'ml' ? 200 : 1, unit: chosenDairy.unit }] : [],
+                { name: veg1.name, amount: 0.5, unit: veg1.unit }
+              ],
+              reason: `아침 [${bCfg.style}] 스타일과 설정하신 선호 조건(${(bCfg.conditions || []).join(', ') || '기본'})을 반영했습니다.`,
+              recipeQuery: `${bCfg.style} 아침 식단 레시피`
+            },
+            {
+              type: '점심',
+              emoji: lCfg.style === '한식' ? '🍲' : '🍛',
+              title: buildTitleByStyle('점심', lCfg.style, lunchProtein, veg1, lCfg.conditions || []),
+              mealStyle: lCfg.style,
+              appliedConditions: lCfg.conditions || [],
+              includedFruit: (lCfg.conditions || []).includes('과일 필수') ? chosenFruit.name : '',
+              ingredientsUsed: [
+                { name: lunchProtein.name, amount: lunchProtein.unit === 'g' ? 120 : 1, unit: lunchProtein.unit },
+                { name: veg1.name, amount: 0.5, unit: veg1.unit }
+              ],
+              reason: `저녁 메뉴(${dinnerProtein.name})와 겹치지 않도록 ${lunchProtein.name} 중심으로 구성한 [${lCfg.style}] 점심입니다.`,
+              recipeQuery: `${lunchProtein.name} ${veg1.name} 요리 레시피`
+            },
+            {
+              type: '저녁',
+              emoji: dCfg.style === '한식' ? '🥘' : '🍝',
+              title: buildTitleByStyle('저녁', dCfg.style, dinnerProtein, veg2, dCfg.conditions || []),
+              mealStyle: dCfg.style,
+              appliedConditions: dCfg.conditions || [],
+              includedFruit: (dCfg.conditions || []).includes('과일 필수') ? chosenFruit.name : '',
+              ingredientsUsed: [
+                { name: dinnerProtein.name, amount: dinnerProtein.unit === 'g' ? 150 : 1, unit: dinnerProtein.unit },
+                { name: veg2.name, amount: 1, unit: veg2.unit }
+              ],
+              reason: `점심(${lunchProtein.name})과 다른 주재료(${dinnerProtein.name}·${veg2.name})로 구성한 [${dCfg.style}] 저녁 밥상입니다.`,
+              recipeQuery: `${dinnerProtein.name} ${veg2.name} 저녁 메뉴 레시피`
+            },
+            {
+              type: '간식',
+              emoji: '🍎',
+              title: `${chosenFruit.name} 핑거푸드 & ${chosenDairy.name}`,
+              mealStyle: '초간단',
+              appliedConditions: ['과일 필수'],
+              includedFruit: chosenFruit.name,
+              ingredientsUsed: [
+                { name: chosenFruit.name, amount: 1, unit: chosenFruit.unit },
+                { name: chosenDairy.name, amount: chosenDairy.unit === 'ml' ? 200 : 1, unit: chosenDairy.unit }
+              ],
+              reason: '신선한 과일과 유제품으로 구성한 건강한 오후 간식입니다.',
+              recipeQuery: `${chosenFruit.name} 건강 간식`
+            }
+          ];
+
+          const nextMealsByOffset = { ...mealsByOffset, [selectedDayOffset]: smartMeals };
+          const nextCompletedByOffset = { ...completedMealsByOffset, [selectedDayOffset]: {} };
+          setMealsByOffset(nextMealsByOffset);
+          setCompletedMealsByOffset(nextCompletedByOffset);
+          setIsGeneratingMeals(false);
+          saveAndSync({
+            inventory,
+            logs: consumptionLogs,
+            mealsByOffset: nextMealsByOffset,
+            completedMealsByOffset: nextCompletedByOffset
+          });
+          showToast(`${activeDateInfo.label} 맞춤 식단이 새롭게 구성되었습니다!`);
+        }, 450);
+      };
+
+      const handleCompleteMeal = (meal) => {
+        if (completedMeals[meal.type]) return;
+        let deductedCount = 0;
+        let workingInventory = [...inventory];
+        let workingLogs = [...consumptionLogs];
+
+        meal.ingredientsUsed.forEach((used) => {
+          const targetIdx = workingInventory.findIndex(
+            (inv) => inv.name.includes(used.name) || used.name.includes(inv.name)
+          );
+          if (targetIdx > -1) {
+            const target = workingInventory[targetIdx];
+            const deductAmt = target.unit === used.unit ? used.amount : Math.min(1, target.quantity);
+            const actualUsed = Math.min(target.quantity, deductAmt);
+            const nextQty = Number((target.quantity - actualUsed).toFixed(2));
+
+            if (actualUsed > 0) {
+              const now = new Date();
+              const timeStr = `오늘 ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+              workingLogs.unshift({
+                id: `log-${Date.now()}-${Math.random()}`,
+                name: target.name,
+                amount: actualUsed,
+                unit: target.unit,
+                time: timeStr,
+                note: `${activeDateInfo.label} ${meal.type} 조리`
+              });
+              deductedCount++;
+            }
+            workingInventory[targetIdx] = { ...target, quantity: nextQty };
+          }
+        });
+
+        workingInventory = workingInventory.filter((item) => item.quantity > 0);
+        const nextCompletedByOffset = {
+          ...completedMealsByOffset,
+          [selectedDayOffset]: { ...completedMeals, [meal.type]: true }
+        };
+        setInventory(workingInventory);
+        setConsumptionLogs(workingLogs);
+        setCompletedMealsByOffset(nextCompletedByOffset);
+
+        saveAndSync({
+          inventory: workingInventory,
+          logs: workingLogs,
+          mealsByOffset,
+          completedMealsByOffset: nextCompletedByOffset
+        });
+
+        showToast(
+          deductedCount > 0
+            ? `'${meal.title}' 요리 완료! 사용된 재고 ${deductedCount}종이 차감되었습니다.`
+            : `'${meal.title}' 식단 완료 기록되었습니다.`
+        );
+      };
+
+      const getCategoryStyle = (category) => {
+        switch (category) {
+          case '채소/과일':
+            return { emoji: '🥬', bg: 'bg-emerald-50 text-emerald-700 border-emerald-200/70' };
+          case '정육/수산':
+            return { emoji: '🥩', bg: 'bg-rose-50 text-rose-700 border-rose-200/70' };
+          case '유제품/계란':
+            return { emoji: '🥚', bg: 'bg-amber-50 text-amber-800 border-amber-200/70' };
+          case '냉동/가공':
+            return { emoji: '❄️', bg: 'bg-sky-50 text-sky-700 border-sky-200/70' };
+          default:
+            return { emoji: '🍞', bg: 'bg-purple-50 text-purple-700 border-purple-200/70' };
+        }
+      };
+
+      const activeAllergies = [
+        ...(familyProfile.allergies || []),
+        ...(familyProfile.customAllergyText ? [familyProfile.customAllergyText] : [])
+      ];
+
+      return (
+        <div className="min-h-screen bg-[#F6F5F0] text-slate-800 relative overflow-x-hidden">
+          <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
+            <div className="absolute -top-28 -left-24 w-96 h-96 rounded-full bg-emerald-200/35 blur-3xl" />
+            <div className="absolute top-1/3 -right-24 w-[28rem] h-[28rem] rounded-full bg-orange-200/30 blur-3xl" />
+            <div className="absolute -bottom-32 left-1/3 w-96 h-96 rounded-full bg-sky-200/30 blur-3xl" />
+          </div>
+
+          {toastMessage && (
+            <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 bg-slate-900/95 text-white px-5 py-3.5 rounded-2xl shadow-2xl border border-white/10">
+              <span className="text-emerald-400">✓</span>
+              <span className="text-sm font-semibold">{toastMessage}</span>
+            </div>
+          )}
+
+          <div className="relative z-10 flex flex-col md:flex-row min-h-screen w-full max-w-[1440px] mx-auto">
+            {/* 좌측 슬림 사이드 레일 */}
+            <aside className="w-full md:w-20 lg:w-24 shrink-0 bg-white/90 backdrop-blur-xl border-b md:border-b-0 md:border-r border-stone-200/80 px-3 py-3 md:py-6 flex md:flex-col items-center justify-between gap-3 md:sticky md:top-0 md:h-screen z-20">
+              <div className="flex items-center gap-2.5 md:flex-col">
+                <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-emerald-500 via-teal-500 to-cyan-600 flex items-center justify-center text-white shadow-lg shadow-emerald-500/25">
+                  <Icon name="fridge" className="w-6 h-6" />
+                </div>
+                <span className="md:hidden text-sm font-extrabold text-slate-900 truncate max-w-[140px]">
+                  {familyProfile.householdName || '스마트 냉장고'}
+                </span>
+              </div>
+
+              <nav className="flex md:flex-col items-center gap-2">
+                {[
+                  { id: 'overview', label: '홈', icon: 'home', activeClass: 'bg-slate-900 text-white shadow-md' },
+                  { id: 'meals', label: '식단', icon: 'utensils', activeClass: 'bg-gradient-to-br from-orange-500 to-amber-500 text-white shadow-md' },
+                  { id: 'inventory', label: '현황', icon: 'fridge', activeClass: 'bg-gradient-to-br from-emerald-600 to-teal-600 text-white shadow-md' },
+                  { id: 'receipt', label: '등록', icon: 'receipt', activeClass: 'bg-gradient-to-br from-indigo-600 to-violet-600 text-white shadow-md' }
+                ].map((nav) => {
+                  const isActive = activeTab === nav.id;
+                  return (
+                    <button
+                      key={nav.id}
+                      onClick={() => setActiveTab(nav.id)}
+                      className={`w-14 h-14 md:w-16 md:h-16 rounded-2xl flex flex-col items-center justify-center gap-1 transition-all active:scale-95 ${
+                        isActive
+                          ? nav.activeClass
+                          : 'bg-stone-100/80 text-slate-500 hover:bg-stone-200/70 hover:text-slate-800'
+                      }`}
+                    >
+                      <Icon name={nav.icon} className="w-5 h-5" />
+                      <span className="text-[11px] font-extrabold tracking-tight">{nav.label}</span>
+                    </button>
+                  );
+                })}
+              </nav>
+
+              <button
+                onClick={() => setIsSettingsModalOpen(true)}
+                title="가족 맞춤 · 공유 설정"
+                className="relative w-11 h-11 md:w-14 md:h-14 rounded-2xl bg-stone-100/90 hover:bg-stone-200/80 text-slate-600 flex flex-col items-center justify-center gap-0.5 transition-all active:scale-95"
+              >
+                <Icon name="settings" className="w-5 h-5" />
+                <span className="hidden md:block text-[10px] font-bold">설정</span>
+                <span className={`absolute top-2 right-2 w-2 h-2 rounded-full ring-2 ring-white ${cloudUrl ? 'bg-emerald-500' : 'bg-sky-500'}`} />
+              </button>
+            </aside>
+
+            {/* 우측 메인 콘텐츠 */}
+            <main className="flex-1 min-w-0 w-full p-4 md:p-6 lg:p-7 overflow-y-auto flex flex-col justify-between">
+              <div>
+                {/* 상단 헤더 바 */}
+                <div className="bg-white/85 backdrop-blur-md rounded-3xl p-3.5 md:px-5 border border-white shadow-sm mb-6 flex flex-wrap items-center justify-between gap-2.5">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-xs font-extrabold px-3 py-1.5 rounded-full bg-gradient-to-r from-amber-100 to-orange-100 text-amber-900 whitespace-nowrap">
+                      🏠 {familyProfile.householdName || '우리집 스마트 냉장고'}
+                    </span>
+                    <span className="hidden sm:inline-flex text-xs font-bold px-2.5 py-1.5 rounded-full bg-stone-100 text-slate-700 whitespace-nowrap">
+                      🍽️ 아:{familyProfile.mealConfig?.아침?.style || '간단'} · 점:{familyProfile.mealConfig?.점심?.style || '간단'} · 저:{familyProfile.mealConfig?.저녁?.style || '한식'}
+                    </span>
+                    {activeAllergies.length > 0 && (
+                      <span className="text-xs font-extrabold px-2.5 py-1.5 rounded-full bg-purple-100 text-purple-800 whitespace-nowrap">
+                        🚫 알레르기 제외: {activeAllergies.join(', ')}
+                      </span>
+                    )}
+                    {expiringItems.length > 0 && (
+                      <span className="text-xs font-extrabold px-2.5 py-1.5 rounded-full bg-rose-100 text-rose-700 whitespace-nowrap">
+                        🔥 임박 {expiringItems.length}종
+                      </span>
+                    )}
+                    <div className="inline-flex items-center gap-1">
+                      <button
+                        onClick={() => setIsSettingsModalOpen(true)}
+                        className={`text-[11px] font-bold px-2.5 py-1.5 rounded-full border flex items-center gap-1.5 whitespace-nowrap transition-colors ${
+                          syncStatus === 'local'
+                            ? 'bg-sky-50 text-sky-800 border-sky-200/80 hover:bg-sky-100'
+                            : syncStatus === 'offline'
+                            ? 'bg-amber-50 text-amber-800 border-amber-200'
+                            : 'bg-emerald-50 text-emerald-700 border-emerald-200/70 hover:bg-emerald-100'
+                        }`}
+                      >
+                        <span
+                          className={`w-2 h-2 rounded-full ${
+                            syncStatus === 'local'
+                              ? 'bg-sky-500'
+                              : syncStatus === 'syncing'
+                              ? 'bg-amber-400 animate-ping'
+                              : syncStatus === 'offline'
+                              ? 'bg-amber-500'
+                              : 'bg-emerald-500'
+                          }`}
+                        />
+                        <span>
+                          {syncStatus === 'local'
+                            ? '내 기기 저장 (가족 연동 설정)'
+                            : syncStatus === 'syncing'
+                            ? '동기화 중...'
+                            : syncStatus === 'offline'
+                            ? '오프라인 백업 모드'
+                            : `가족 공유 동기화됨 (${lastSyncedLabel})`}
+                        </span>
+                      </button>
+                      {cloudUrl && (
+                        <button
+                          onClick={() => pullFromCloud(true)}
+                          title="지금 즉시 가족 데이터 새로고침"
+                          className="p-1.5 rounded-full bg-white hover:bg-emerald-50 text-slate-600 hover:text-emerald-700 border border-stone-200/80 shadow-sm transition-all active:scale-90"
+                        >
+                          <Icon name="refresh" className={`w-3.5 h-3.5 ${syncStatus === 'syncing' ? 'animate-spin' : ''}`} />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* 오늘 / 내일 날짜 버튼 + AI 식단 추천 */}
+                  <div className="flex items-center gap-2 shrink-0 ml-auto">
+                    <div className="inline-flex items-center bg-stone-100/90 p-1 rounded-2xl border border-stone-200/70">
+                      <button
+                        onClick={() => setSelectedDayOffset(0)}
+                        className={`min-w-[116px] justify-center flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
+                          selectedDayOffset === 0 ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'
+                        }`}
+                      >
+                        <span>📅 오늘 {todayInfo.dateStr}({todayInfo.dayName})</span>
+                      </button>
+                      <button
+                        onClick={() => setSelectedDayOffset(1)}
+                        className={`min-w-[116px] justify-center flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
+                          selectedDayOffset === 1 ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'
+                        }`}
+                      >
+                        <span>🗓️ 내일 {tomorrowInfo.dateStr}({tomorrowInfo.dayName})</span>
+                      </button>
+                    </div>
+
+                    <button
+                      onClick={handleGenerateMeals}
+                      disabled={isGeneratingMeals}
+                      className="min-w-[132px] justify-center px-3.5 py-2 rounded-2xl bg-gradient-to-r from-orange-500 to-rose-500 hover:from-orange-600 hover:to-rose-600 text-white font-bold text-xs shadow-md flex items-center gap-1.5 whitespace-nowrap transition-all active:scale-95"
+                    >
+                      <Icon name="sparkles" className="w-3.5 h-3.5" />
+                      <span>{isGeneratingMeals ? '생성 중...' : 'AI 식단 추천'}</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* VIEW 0: 홈 보드 */}
+                {activeTab === 'overview' && (
+                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                    <div className="lg:col-span-7 space-y-3.5">
+                      <div className="flex items-center justify-between px-1">
+                        <h2 className="text-base font-extrabold text-slate-900">
+                          🍳 {activeDateInfo.label}({activeDateInfo.dateStr} {activeDateInfo.dayName})의 식단{' '}
+                          <span className="text-xs font-medium text-slate-400">· 메뉴를 누르면 레시피가 열려요</span>
+                        </h2>
+                        <button onClick={() => setActiveTab('meals')} className="text-xs font-bold text-orange-600 hover:underline">
+                          전체 보기 →
+                        </button>
+                      </div>
+
+                      {shouldSkipLunch && (
+                        <div className="bg-emerald-500/10 border border-emerald-200/80 rounded-2xl px-4 py-3 flex items-center justify-between gap-3">
+                          <p className="text-xs font-extrabold text-emerald-950">🏫 {activeDateInfo.dayName}요일 점심: 기관 급식 (가정 보육 아이가 있으면 설정에서 변경 가능)</p>
+                          <span className="text-[10px] font-extrabold px-2.5 py-1 rounded-full bg-white text-emerald-700 shadow-sm">점심 생략</span>
+                        </div>
+                      )}
+
+                      <div className="space-y-3">
+                        {meals
+                          .filter((meal) => !(shouldSkipLunch && meal.type === '점심'))
+                          .map((meal) => {
+                            const isDone = !!completedMeals[meal.type];
+                            const mealCfg = familyProfile.mealConfig?.[meal.type];
+                            const activeStyle = meal.mealStyle || mealCfg?.style;
+                            const activeConds = meal.appliedConditions || mealCfg?.conditions || [];
+                            const typeTheme = {
+                              아침: 'from-amber-400 to-orange-400 text-white',
+                              점심: 'from-emerald-500 to-teal-500 text-white',
+                              저녁: 'from-indigo-500 to-purple-500 text-white',
+                              간식: 'from-rose-400 to-pink-500 text-white'
+                            };
+
+                            return (
+                              <div
+                                key={meal.type}
+                                onClick={() => setSelectedRecipeMeal(meal)}
+                                className={`group cursor-pointer bg-white/95 rounded-3xl p-4 md:p-5 border transition-all ${
+                                  isDone ? 'border-emerald-300 bg-emerald-50/30' : 'border-white shadow-sm hover:shadow-md hover:border-orange-200'
+                                }`}
+                              >
+                                <div className="flex items-center justify-between gap-3">
+                                  <div className="flex items-center gap-3.5 min-w-0">
+                                    <div className="w-12 h-12 rounded-2xl bg-stone-100 border border-stone-200/60 flex items-center justify-center text-2xl shrink-0">
+                                      {meal.emoji || '🍽️'}
+                                    </div>
+                                    <div className="min-w-0">
+                                      <div className="flex flex-wrap items-center gap-1.5 mb-1">
+                                        <span className={`text-[11px] font-extrabold px-2.5 py-0.5 rounded-lg bg-gradient-to-r ${typeTheme[meal.type] || 'bg-slate-800 text-white'}`}>
+                                          {meal.type}
+                                        </span>
+                                        {activeStyle && (
+                                          <span className="text-[11px] font-bold px-2 py-0.5 rounded-lg bg-stone-100 text-slate-700 border border-stone-200/70">
+                                            {activeStyle}
+                                          </span>
+                                        )}
+                                        {activeConds.map((c) => (
+                                          <span key={c} className="text-[11px] font-bold px-2 py-0.5 rounded-lg bg-rose-50 text-rose-700 border border-rose-200/70">
+                                            {c === '과일 필수' && meal.includedFruit ? `🍎 ${meal.includedFruit}` : c}
+                                          </span>
+                                        ))}
+                                      </div>
+                                      <h3 className="text-base font-extrabold text-slate-900 truncate group-hover:text-orange-600">
+                                        {meal.title}
+                                      </h3>
+                                      <p className="text-xs text-slate-500 mt-0.5 truncate">{meal.reason}</p>
+                                    </div>
+                                  </div>
+
+                                  <div className="flex items-center gap-2 shrink-0">
+                                    <span className="hidden sm:inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1.5 rounded-xl bg-orange-50 text-orange-700">
+                                      ▶ 레시피
+                                    </span>
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleCompleteMeal(meal);
+                                      }}
+                                      disabled={isDone}
+                                      className={`px-3.5 py-2 rounded-xl font-bold text-xs transition-all active:scale-95 ${
+                                        isDone ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-900 hover:bg-slate-800 text-white shadow-sm'
+                                      }`}
+                                    >
+                                      {isDone ? '✓ 완료됨' : '요리 완료'}
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                      </div>
+                    </div>
+
+                    {/* 우측 컬럼: 영수증 배너 + 임박 재고 + 소진 내역 */}
+                    <div className="lg:col-span-5 space-y-5">
+                      <div
+                        onClick={() => setActiveTab('receipt')}
+                        className="bg-gradient-to-br from-indigo-600 via-violet-600 to-purple-700 rounded-3xl p-5 text-white shadow-lg cursor-pointer hover:brightness-105 transition-all active:scale-95 flex items-center justify-between gap-4"
+                      >
+                        <div className="space-y-1">
+                          <span className="text-[10px] font-extrabold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-white/20">AI Smart Scan</span>
+                          <h3 className="text-base font-extrabold pt-1">장보고 오셨나요? 영수증으로 재고 채우기</h3>
+                          <p className="text-xs text-indigo-100">마트 앱 주문내역을 붙여넣으면 AI가 자동 등록해요</p>
+                        </div>
+                        <div className="w-12 h-12 rounded-2xl bg-white/15 flex items-center justify-center shrink-0">
+                          <Icon name="receipt" className="w-6 h-6 text-white" />
+                        </div>
+                      </div>
+
+                      <div className="bg-white/90 rounded-3xl p-5 border border-white shadow-sm space-y-3.5">
+                        <div className="flex items-center justify-between">
+                          <h3 className="text-sm font-extrabold text-slate-900">🚨 먼저 써야 할 임박 식자재</h3>
+                          <button onClick={() => setActiveTab('inventory')} className="text-xs font-bold text-emerald-600 hover:underline">
+                            전체 재고 ({totalItems})
+                          </button>
+                        </div>
+
+                        {expiringItems.length === 0 ? (
+                          <div className="py-6 text-center bg-stone-50 rounded-2xl">
+                            <p className="text-xs font-semibold text-slate-500">소비기한이 임박한 식자재가 없습니다! 🎉</p>
+                          </div>
+                        ) : (
+                          <div className="space-y-2.5">
+                            {expiringItems.map((item) => {
+                              const step = item.unit === 'g' || item.unit === 'ml' ? 50 : item.quantity < 1 ? 0.5 : 1;
+                              return (
+                                <div key={item.id} className="p-3 rounded-2xl bg-rose-50/50 border border-rose-200/70 flex items-center justify-between gap-2">
+                                  <div>
+                                    <div className="flex items-center gap-1.5">
+                                      <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-md bg-rose-500 text-white">D-{item.daysLeft}</span>
+                                      <span className="text-xs font-bold text-slate-900">{item.name}</span>
+                                    </div>
+                                    <p className="text-[11px] font-semibold text-rose-700 mt-1">남은 수량: {item.quantity}{item.unit}</p>
+                                  </div>
+                                  <div className="flex items-center gap-1.5">
+                                    <button onClick={() => handleConsume(item.id, step, '임박 재료 소진')} className="px-2.5 py-1.5 rounded-xl bg-white hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-extrabold">
+                                      -{step}{item.unit}
+                                    </button>
+                                    <button onClick={() => handleDeleteAll(item)} className="px-2.5 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold">
+                                      다 씀
+                                    </button>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="bg-white/90 rounded-3xl p-5 border border-white shadow-sm space-y-3">
+                        <div className="flex items-center justify-between">
+                          <h3 className="text-sm font-extrabold text-slate-900">🕒 오늘 사용한 식자재 기록</h3>
+                          <span className="text-[11px] font-bold text-slate-400">{consumptionLogs.length}건</span>
+                        </div>
+                        <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                          {consumptionLogs.map((log) => (
+                            <div key={log.id} className="px-3 py-2.5 rounded-xl bg-stone-50/90 border border-stone-100 flex items-center justify-between text-xs">
+                              <div>
+                                <span className="font-bold text-slate-800">{log.name}</span>
+                                <span className="text-[10px] text-slate-400 ml-2">{log.time} · {log.note}</span>
+                              </div>
+                              <span className="font-extrabold text-rose-600 bg-rose-50 px-2 py-0.5 rounded-lg">-{log.amount}{log.unit}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* VIEW 1: 식자재 재고 현황 ('현황') */}
+                {activeTab === 'inventory' && (
+                  <div className="space-y-5">
+                    <div className="bg-white/90 rounded-3xl p-4 md:p-5 border border-white shadow-sm space-y-3.5">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div className="relative flex-1 max-w-md">
+                          <input
+                            type="text"
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            placeholder="🔍 냉장고 속 식재료 검색..."
+                            className="w-full px-4 py-2.5 rounded-2xl bg-stone-100/80 border border-stone-200/70 text-sm focus:outline-none focus:bg-white focus:border-emerald-500"
+                          />
+                        </div>
+                        <button
+                          onClick={() => setIsAddModalOpen(true)}
+                          className="px-4 py-2.5 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-extrabold text-xs shadow-md flex items-center justify-center gap-1.5"
+                        >
+                          <Icon name="plus" className="w-4 h-4" />
+                          <span>식자재 직접 추가</span>
+                        </button>
+                      </div>
+
+                      <div className="flex items-center gap-2 overflow-x-auto pb-1">
+                        {['전체', '채소/과일', '정육/수산', '유제품/계란', '냉동/가공', '곡류/기타'].map((cat) => (
+                          <button
+                            key={cat}
+                            onClick={() => setSelectedCategory(cat)}
+                            className={`px-3.5 py-1.5 rounded-xl text-xs font-extrabold whitespace-nowrap ${
+                              selectedCategory === cat ? 'bg-slate-900 text-white shadow-sm' : 'bg-stone-100/90 text-slate-600'
+                            }`}
+                          >
+                            {cat}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                      {filteredInventory.map((item) => {
+                        const catStyle = getCategoryStyle(item.category);
+                        const isUrgent = item.daysLeft <= 2;
+                        const step = item.unit === 'g' || item.unit === 'ml' ? 50 : item.quantity < 1 ? 0.5 : 1;
+                        return (
+                          <div key={item.id} className={`bg-white/95 rounded-2xl p-3 border flex flex-col justify-between gap-2.5 ${isUrgent ? 'border-rose-200 shadow-sm' : 'border-white shadow-sm'}`}>
+                            <div className="flex items-start justify-between gap-1.5 min-w-0">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <div className={`w-9 h-9 rounded-xl border flex items-center justify-center text-base shrink-0 ${catStyle.bg}`}>
+                                  {catStyle.emoji}
+                                </div>
+                                <div className="min-w-0">
+                                  <div className="flex items-center gap-1">
+                                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-stone-100 text-slate-600 shrink-0">{item.storage}</span>
+                                    <span className={`text-[10px] font-extrabold px-1.5 py-0.5 rounded shrink-0 ${isUrgent ? 'bg-rose-500 text-white' : 'bg-emerald-50 text-emerald-700'}`}>
+                                      D-{item.daysLeft}
+                                    </span>
+                                  </div>
+                                  <h4 className="text-xs font-extrabold text-slate-900 mt-1 truncate" title={item.name}>{item.name}</h4>
+                                </div>
+                              </div>
+                              <button onClick={() => handleDeleteAll(item)} className="p-1 rounded-lg text-slate-400 hover:text-rose-600 shrink-0">
+                                <Icon name="trash" className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+
+                            <div className="pt-2 border-t border-stone-100 flex items-center justify-between gap-1">
+                              <div className="min-w-0">
+                                <span className="text-[10px] font-semibold text-slate-400 block leading-none">현재 잔량</span>
+                                <span className="text-sm font-extrabold text-slate-900 mt-0.5 block truncate">{item.quantity}{item.unit}</span>
+                              </div>
+                              <div className="flex items-center gap-1 shrink-0">
+                                <button onClick={() => handleConsume(item.id, step, '수동 소진')} className="px-2 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 font-extrabold text-[11px]">
+                                  -{step}{item.unit}
+                                </button>
+                                <button onClick={() => handleIncrease(item.id, step)} className="p-1 rounded-lg bg-stone-100 hover:bg-stone-200 text-slate-700">
+                                  <Icon name="plus" className="w-3 h-3" />
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* VIEW 2: AI 마트 영수증 재고 등록 ('등록') */}
+                {activeTab === 'receipt' && (
+                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                    <div className="lg:col-span-5 bg-white/95 rounded-3xl p-5 border border-white shadow-sm space-y-4">
+                      <div className="flex items-center justify-between gap-2">
+                        <div>
+                          <h3 className="text-sm font-extrabold text-slate-900">🧾 영수증 사진 / 텍스트 등록</h3>
+                          <p className="text-[11px] text-slate-500">영수증 촬영 · 캡처 업로드 또는 주문내역 복사</p>
+                        </div>
+                        <button type="button" onClick={() => setReceiptText(SAMPLE_RECEIPT_TEXT)} className="text-xs font-extrabold px-3 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 shrink-0">
+                          샘플 넣기
+                        </button>
+                      </div>
+
+                      <div className="space-y-2">
+                        <input
+                          ref={fileInputRef}
+                          type="file"
+                          accept="image/*"
+                          onChange={handleReceiptImageUpload}
+                          className="hidden"
+                        />
+                        {!receiptImagePreview ? (
+                          <button
+                            type="button"
+                            onClick={() => fileInputRef.current?.click()}
+                            className="w-full py-3 px-4 rounded-2xl border-2 border-dashed border-indigo-200 bg-indigo-50/40 hover:bg-indigo-50 text-indigo-700 flex items-center justify-center gap-2 text-xs font-extrabold transition-all"
+                          >
+                            <Icon name="camera" className="w-4 h-4" />
+                            <span>📸 영수증 사진 · 마트 앱 캡처 올리기</span>
+                          </button>
+                        ) : (
+                          <div className="relative rounded-2xl overflow-hidden border border-indigo-200 bg-stone-100">
+                            <img src={receiptImagePreview} alt="영수증 미리보기" className="w-full max-h-40 object-contain" />
+                            <button
+                              type="button"
+                              onClick={handleClearReceiptImage}
+                              className="absolute top-2 right-2 p-1.5 rounded-full bg-slate-900/80 text-white hover:bg-rose-600"
+                            >
+                              <Icon name="x" className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        )}
+                      </div>
+
+                      <textarea
+                        rows={7}
+                        value={receiptText}
+                        onChange={(e) => setReceiptText(e.target.value)}
+                        placeholder="마트 주문내역이나 영수증 텍스트를 붙여넣으세요..."
+                        className="w-full p-3.5 rounded-2xl bg-stone-50 border border-stone-200 text-xs leading-relaxed focus:outline-none focus:bg-white focus:border-indigo-500"
+                      />
+                      {receiptError && <p className="text-xs font-bold text-rose-600 bg-rose-50 p-2.5 rounded-xl">{receiptError}</p>}
+                      <button
+                        onClick={handleParseReceipt}
+                        disabled={isParsingReceipt}
+                        className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:brightness-105 text-white font-extrabold text-sm shadow-lg flex items-center justify-center gap-2 transition-all active:scale-95"
+                      >
+                        <Icon name="sparkles" className="w-4 h-4" />
+                        <span>{isParsingReceipt ? '식자재 분석 중...' : '식자재 자동 추출하기'}</span>
+                      </button>
+                    </div>
+
+                    <div className="lg:col-span-7 bg-white/95 rounded-3xl p-5 border border-white shadow-sm space-y-4">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div>
+                          <h3 className="text-sm font-extrabold text-slate-900">추출된 식자재 검수 ({parsedItems.length}건)</h3>
+                          <p className="text-[11px] text-slate-500">품목·카테고리·수량·소비기한을 확인 후 일괄 등록하세요</p>
+                        </div>
+                        {parsedItems.length > 0 && (
+                          <button onClick={handleConfirmAddParsedItems} className="px-4 py-2 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs shadow-md">
+                            ✓ 냉장고에 일괄 등록
+                          </button>
+                        )}
+                      </div>
+
+                      {parsedItems.length === 0 ? (
+                        <div className="py-14 text-center bg-stone-50/80 rounded-2xl border border-dashed border-stone-200 space-y-2 px-4">
+                          <p className="text-xs font-bold text-slate-500">좌측에 영수증 사진이나 주문내역을 넣고 [식자재 자동 추출하기]를 눌러주세요.</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-2.5 max-h-[480px] overflow-y-auto pr-1">
+                          {parsedItems.map((item) => (
+                            <div key={item.tempId} className="p-3 rounded-2xl bg-stone-50/90 border border-stone-200/70 space-y-2">
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="text"
+                                  value={item.name}
+                                  onChange={(e) => handleUpdateParsedItem(item.tempId, 'name', e.target.value)}
+                                  className="flex-1 min-w-[120px] px-3 py-1.5 rounded-xl bg-white border border-stone-200 text-xs font-extrabold text-slate-900"
+                                />
+                                {item.bundleApplied && (
+                                  <span className="text-[10px] font-extrabold px-2 py-1 rounded-lg bg-indigo-100 text-indigo-700 shrink-0">
+                                    번들 {item.bundleApplied}입 반영
+                                  </span>
+                                )}
+                                <button onClick={() => handleRemoveParsedItem(item.tempId)} className="p-1.5 rounded-xl text-slate-400 hover:text-rose-600">
+                                  <Icon name="x" className="w-4 h-4" />
+                                </button>
+                              </div>
+
+                              <div className="flex flex-wrap items-center gap-1.5">
+                                <select
+                                  value={item.category}
+                                  onChange={(e) => handleUpdateParsedItem(item.tempId, 'category', e.target.value)}
+                                  className="px-2.5 py-1.5 rounded-xl bg-white border border-stone-200 text-[11px] font-bold text-slate-700"
+                                >
+                                  {['채소/과일', '정육/수산', '유제품/계란', '냉동/가공', '곡류/기타'].map((c) => (
+                                    <option key={c} value={c}>{c}</option>
+                                  ))}
+                                </select>
+
+                                <div className="flex items-center gap-1 bg-white px-2 py-1 rounded-xl border border-stone-200">
+                                  <input
+                                    type="number"
+                                    step="any"
+                                    value={item.quantity}
+                                    onChange={(e) => handleUpdateParsedItem(item.tempId, 'quantity', Number(e.target.value))}
+                                    className="w-14 text-xs font-extrabold text-right text-slate-900 focus:outline-none"
+                                  />
+                                  <select
+                                    value={item.unit}
+                                    onChange={(e) => handleUpdateParsedItem(item.tempId, 'unit', e.target.value)}
+                                    className="text-[11px] font-bold text-slate-600 bg-transparent focus:outline-none"
+                                  >
+                                    {['개', 'g', 'ml', '모', '구', '봉', '팩', '송이', '단', '장'].map((u) => (
+                                      <option key={u} value={u}>{u}</option>
+                                    ))}
+                                  </select>
+                                </div>
+
+                                <div className="inline-flex items-center gap-1">
+                                  {[2, 4, 5, 6].map((mult) => (
+                                    <button
+                                      key={mult}
+                                      type="button"
+                                      onClick={() =>
+                                        handleUpdateParsedItem(
+                                          item.tempId,
+                                          'quantity',
+                                          Number(((Number(item.quantity) || 1) * mult).toFixed(2))
+                                        )
+                                      }
+                                      className="px-1.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-[10px] font-extrabold"
+                                    >
+                                      ×{mult}
+                                    </button>
+                                  ))}
+                                </div>
+
+                                <div className="flex items-center gap-1 bg-white px-2.5 py-1.5 rounded-xl border border-stone-200 ml-auto">
+                                  <span className="text-[11px] font-bold text-amber-600">D-</span>
+                                  <input
+                                    type="number"
+                                    min="1"
+                                    value={item.estimatedExpiryDays}
+                                    onChange={(e) => handleUpdateParsedItem(item.tempId, 'estimatedExpiryDays', Number(e.target.value))}
+                                    className="w-9 text-xs font-extrabold text-slate-900 focus:outline-none"
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* VIEW 3: 식단 전체 보기 ('식단') */}
+                {activeTab === 'meals' && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                    {meals
+                      .filter((meal) => !(shouldSkipLunch && meal.type === '점심'))
+                      .map((meal) => {
+                        const isDone = !!completedMeals[meal.type];
+                        const mealCfg = familyProfile.mealConfig?.[meal.type];
+                        const activeStyle = meal.mealStyle || mealCfg?.style;
+                        const activeConds = meal.appliedConditions || mealCfg?.conditions || [];
+                        const badgeColors = {
+                          아침: 'from-amber-400 to-orange-400 text-white',
+                          점심: 'from-emerald-500 to-teal-500 text-white',
+                          저녁: 'from-indigo-500 to-purple-500 text-white',
+                          간식: 'from-rose-400 to-pink-500 text-white'
+                        };
+                        return (
+                          <div
+                            key={meal.type}
+                            onClick={() => setSelectedRecipeMeal(meal)}
+                            className={`group cursor-pointer bg-white/95 rounded-3xl border p-5 flex flex-col justify-between gap-4 transition-all ${
+                              isDone ? 'border-emerald-300 bg-emerald-50/20' : 'border-white shadow-sm hover:shadow-lg'
+                            }`}
+                          >
+                            <div className="space-y-3.5">
+                              <div className="flex items-center justify-between gap-2">
+                                <div className="flex flex-wrap items-center gap-1.5">
+                                  <span className={`text-xs font-extrabold px-3 py-1 rounded-xl bg-gradient-to-r ${badgeColors[meal.type] || 'bg-slate-800 text-white'}`}>
+                                    {meal.type}
+                                  </span>
+                                  {activeStyle && (
+                                    <span className="text-[11px] font-bold px-2.5 py-1 rounded-xl bg-stone-100 text-slate-700 border border-stone-200/70">
+                                      {activeStyle}
+                                    </span>
+                                  )}
+                                  {activeConds.map((c) => (
+                                    <span key={c} className="text-[11px] font-bold px-2.5 py-1 rounded-xl bg-rose-50 text-rose-700 border border-rose-200/70">
+                                      {c === '과일 필수' && meal.includedFruit ? `🍎 ${meal.includedFruit}` : c}
+                                    </span>
+                                  ))}
+                                </div>
+                                <span className="text-2xl">{meal.emoji || '🍽️'}</span>
+                              </div>
+                              <h3 className="text-base font-extrabold text-slate-900">{meal.title}</h3>
+                              <p className="text-xs text-slate-600 bg-stone-50 p-3 rounded-2xl border border-stone-100">💡 {meal.reason}</p>
+                              <div className="flex flex-wrap gap-1.5">
+                                {meal.ingredientsUsed.map((ing, i) => (
+                                  <span key={i} className="text-[11px] font-bold px-2.5 py-1 rounded-xl bg-orange-50 text-orange-800 border border-orange-200/70">
+                                    {ing.name} ({ing.amount}{ing.unit})
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+
+                            <div className="space-y-2 pt-2">
+                              <div className="w-full py-2.5 rounded-2xl bg-orange-50 text-orange-800 font-extrabold text-xs text-center">
+                                ▶ 유튜브 · 쇼츠 · 블로그 레시피 보기
+                              </div>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleCompleteMeal(meal);
+                                }}
+                                disabled={isDone}
+                                className={`w-full py-3 rounded-2xl font-extrabold text-xs ${
+                                  isDone ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-900 text-white'
+                                }`}
+                              >
+                                {isDone ? '✓ 요리 완료 및 재고 차감됨' : '요리 완료 (사용 재료 자동 차감)'}
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                  </div>
+                )}
+              </div>
+
+              {/* 오픈소스 저작권 및 라이선스 푸터 */}
+              <footer className="mt-10 pt-5 pb-3 border-t border-stone-200/80 flex flex-col sm:flex-row items-center justify-between gap-2 text-[11px] text-slate-400">
+                <div className="flex items-center gap-2 flex-wrap justify-center sm:justify-start">
+                  <span className="font-bold text-slate-500">
+                    © {new Date().getFullYear()} {OPEN_SOURCE_AUTHOR}.
+                  </span>
+                  <span>All rights reserved.</span>
+                  <span className="px-2 py-0.5 rounded-md bg-stone-200/70 text-slate-600 font-extrabold text-[10px]">
+                    MIT License
+                  </span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span>Open Source Family Fridge &amp; Meal Planner</span>
+                  {OPEN_SOURCE_REPO_URL && (
+                    <a
+                      href={OPEN_SOURCE_REPO_URL}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-bold text-slate-500 hover:text-slate-800 underline"
+                    >
+                      GitHub
+                    </a>
+                  )}
+                </div>
+              </footer>
+            </main>
+          </div>
+
+          {/* 레시피 탐색 모달 */}
+          {selectedRecipeMeal && (
+            <div onClick={() => setSelectedRecipeMeal(null)} className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
+              <div onClick={(e) => e.stopPropagation()} className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-5">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <span className="text-[11px] font-extrabold px-2.5 py-0.5 rounded-lg bg-orange-100 text-orange-800">{selectedRecipeMeal.type} 레시피 검색</span>
+                    <h3 className="text-base font-extrabold text-slate-900 mt-1">{selectedRecipeMeal.title}</h3>
+                  </div>
+                  <button onClick={() => setSelectedRecipeMeal(null)} className="p-1.5 text-slate-400">
+                    <Icon name="x" className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <div className="space-y-2.5">
+                  <a
+                    href={`https://www.youtube.com/results?search_query=${encodeURIComponent((selectedRecipeMeal.recipeQuery || selectedRecipeMeal.title) + ' #shorts')}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-between p-4 rounded-2xl bg-gradient-to-r from-rose-500 to-red-600 text-white shadow-md"
+                  >
+                    <div>
+                      <p className="text-sm font-extrabold">📱 유튜브 쇼츠 (1분 컷 레시피)</p>
+                      <p className="text-[11px] text-rose-100">짧고 직관적인 세로 영상으로 빠르게 따라 만들기</p>
+                    </div>
+                    <Icon name="external" className="w-4 h-4" />
+                  </a>
+
+                  <a
+                    href={`https://www.youtube.com/results?search_query=${encodeURIComponent(selectedRecipeMeal.recipeQuery || selectedRecipeMeal.title)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-between p-4 rounded-2xl bg-slate-900 text-white"
+                  >
+                    <div>
+                      <p className="text-sm font-extrabold">🎬 유튜브 상세 요리 영상</p>
+                      <p className="text-[11px] text-slate-300">계량부터 불 조절까지 친절한 영상 레시피 보기</p>
+                    </div>
+                    <Icon name="external" className="w-4 h-4" />
+                  </a>
+
+                  <a
+                    href={`https://search.naver.com/search.naver?where=view&query=${encodeURIComponent(selectedRecipeMeal.recipeQuery || selectedRecipeMeal.title)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-between p-4 rounded-2xl bg-emerald-50 text-emerald-950 border border-emerald-200"
+                  >
+                    <div>
+                      <p className="text-sm font-extrabold">📖 블로그 사진·글 레시피</p>
+                      <p className="text-[11px] text-emerald-700">주방에서 화면 띄워놓고 단계별 사진으로 보며 조리하기</p>
+                    </div>
+                    <Icon name="external" className="w-4 h-4 text-emerald-700" />
+                  </a>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 설정 모달 */}
+          {isSettingsModalOpen && (
+            <div onClick={() => setIsSettingsModalOpen(false)} className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
+              <div onClick={(e) => e.stopPropagation()} className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-extrabold text-slate-900">⚙️ 우리집 맞춤 & 오픈소스 설정</h3>
+                  <button onClick={() => setIsSettingsModalOpen(false)} className="p-1.5 text-slate-400">
+                    <Icon name="x" className="w-5 h-5" />
+                  </button>
+                </div>
+
+                {/* 1. 냉장고 이름 & 아이별 프로필 */}
+                <div className="bg-stone-50 p-4 rounded-2xl border border-stone-200/80 space-y-3.5">
+                  <p className="text-xs font-extrabold text-slate-800">1. 우리 집 냉장고 이름 &amp; 아이별 맞춤 설정</p>
+
+                  <div>
+                    <label className="text-[11px] font-bold text-slate-500 block mb-1">냉장고 애칭</label>
+                    <input
+                      type="text"
+                      value={familyProfile.householdName}
+                      onChange={(e) => setFamilyProfile({ ...familyProfile, householdName: e.target.value })}
+                      placeholder="예: 민준·서아네 냉장고"
+                      className="w-full px-3 py-2 rounded-xl bg-white border border-stone-200 text-xs font-bold"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <label className="text-[11px] font-bold text-slate-500">아이 목록 ({(familyProfile.kids || []).length}명)</label>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setFamilyProfile({
+                            ...familyProfile,
+                            kids: [
+                              ...(familyProfile.kids || []),
+                              {
+                                id: `kid-${Date.now()}`,
+                                nickname: `${(familyProfile.kids || []).length + 1}째`,
+                                birthYearMonth: '2023-05',
+                                mealStage: '어린이 일반식',
+                                attendsInstitution: true
+                              }
+                            ]
+                          })
+                        }
+                        className="px-2.5 py-1 rounded-lg bg-emerald-600 text-white text-[11px] font-extrabold"
+                      >
+                        + 아이 추가
+                      </button>
+                    </div>
+
+                    {(familyProfile.kids || []).map((kid, idx) => (
+                      <div key={kid.id || idx} className="p-3 rounded-xl bg-white border border-stone-200 space-y-2">
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="text"
+                            value={kid.nickname}
+                            onChange={(e) => {
+                              const next = [...familyProfile.kids];
+                              next[idx] = { ...kid, nickname: e.target.value };
+                              setFamilyProfile({ ...familyProfile, kids: next });
+                            }}
+                            placeholder="애칭 (예: 첫째)"
+                            className="w-24 px-2.5 py-1.5 rounded-lg bg-stone-50 border border-stone-200 text-xs font-extrabold"
+                          />
+                          <input
+                            type="month"
+                            value={kid.birthYearMonth}
+                            onChange={(e) => {
+                              const next = [...familyProfile.kids];
+                              next[idx] = { ...kid, birthYearMonth: e.target.value };
+                              setFamilyProfile({ ...familyProfile, kids: next });
+                            }}
+                            className="flex-1 px-2.5 py-1.5 rounded-lg bg-stone-50 border border-stone-200 text-xs font-bold"
+                          />
+                          <span className="text-[11px] font-extrabold px-2 py-1 rounded-lg bg-sky-50 text-sky-700 shrink-0">
+                            {formatKidAgeLabel(kid.birthYearMonth)}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setFamilyProfile({
+                                ...familyProfile,
+                                kids: familyProfile.kids.filter((_, i) => i !== idx)
+                              })
+                            }
+                            className="p-1 text-slate-400 hover:text-rose-600"
+                          >
+                            <Icon name="x" className="w-4 h-4" />
+                          </button>
+                        </div>
+
+                        <div className="flex flex-wrap gap-1.5">
+                          {['이유식', '저염 유아식', '어린이 일반식', '어른과 동일'].map((stage) => (
+                            <button
+                              key={stage}
+                              type="button"
+                              onClick={() => {
+                                const next = [...familyProfile.kids];
+                                next[idx] = { ...kid, mealStage: stage };
+                                setFamilyProfile({ ...familyProfile, kids: next });
+                              }}
+                              className={`px-2 py-1 rounded-lg text-[10px] font-extrabold ${
+                                kid.mealStage === stage ? 'bg-slate-900 text-white' : 'bg-stone-100 text-slate-600'
+                              }`}
+                            >
+                              {stage}
+                            </button>
+                          ))}
+                        </div>
+
+                        <div className="pt-1 flex items-center justify-between gap-2 border-t border-stone-100">
+                          <span className="text-[10px] font-bold text-slate-400">평일 점심 생활:</span>
+                          <div className="inline-flex gap-1">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const next = [...familyProfile.kids];
+                                next[idx] = { ...kid, attendsInstitution: true };
+                                setFamilyProfile({ ...familyProfile, kids: next });
+                              }}
+                              className={`px-2 py-1 rounded-lg text-[10px] font-extrabold ${
+                                kid.attendsInstitution !== false ? 'bg-emerald-600 text-white' : 'bg-stone-100 text-slate-600'
+                              }`}
+                            >
+                              🏫 기관 등원 (급식)
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const next = [...familyProfile.kids];
+                                next[idx] = { ...kid, attendsInstitution: false };
+                                setFamilyProfile({ ...familyProfile, kids: next });
+                              }}
+                              className={`px-2 py-1 rounded-lg text-[10px] font-extrabold ${
+                                kid.attendsInstitution === false ? 'bg-orange-500 text-white' : 'bg-stone-100 text-slate-600'
+                              }`}
+                            >
+                              🏡 가정 보육 (집밥)
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* 알레르기 선택 */}
+                  <div className="space-y-1.5">
+                    <label className="text-[11px] font-bold text-slate-500 block">제외할 알레르기 식재료</label>
+                    <div className="flex flex-wrap gap-1.5">
+                      {['계란', '우유', '땅콩/견과류', '밀가루', '대두(콩)', '새우/갑각류', '복숭아'].map((al) => {
+                        const active = (familyProfile.allergies || []).includes(al);
+                        return (
+                          <button
+                            key={al}
+                            type="button"
+                            onClick={() => {
+                              const prev = familyProfile.allergies || [];
+                              const next = active ? prev.filter((x) => x !== al) : [...prev, al];
+                              setFamilyProfile({ ...familyProfile, allergies: next });
+                            }}
+                            className={`px-2.5 py-1 rounded-lg text-[11px] font-extrabold ${
+                              active ? 'bg-rose-600 text-white' : 'bg-white border border-stone-200 text-slate-600'
+                            }`}
+                          >
+                            {active ? `✓ ${al}` : al}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+
+                {/* 2. 끼니별(아침/점심/저녁) 스타일 & 선호 조건 */}
+                <div className="bg-amber-50/70 p-4 rounded-2xl border border-amber-200/80 space-y-3">
+                  <p className="text-xs font-extrabold text-amber-950">2. 끼니별 식단 스타일 &amp; 선호 조건</p>
+                  {['아침', '점심', '저녁'].map((mealType) => {
+                    const currentCfg = familyProfile.mealConfig?.[mealType] || DEFAULT_MEAL_CONFIG[mealType];
+                    return (
+                      <div key={mealType} className="p-3 rounded-xl bg-white border border-amber-200/70 space-y-2">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-xs font-extrabold text-slate-900">
+                            {mealType === '아침' ? '🌅 아침' : mealType === '점심' ? '☀️ 점심' : '🌙 저녁'}
+                          </span>
+                          <div className="inline-flex bg-stone-100 p-0.5 rounded-lg">
+                            {MEAL_STYLE_OPTIONS.map((st) => (
+                              <button
+                                key={st}
+                                type="button"
+                                onClick={() =>
+                                  setFamilyProfile({
+                                    ...familyProfile,
+                                    mealConfig: {
+                                      ...familyProfile.mealConfig,
+                                      [mealType]: { ...currentCfg, style: st }
+                                    }
+                                  })
+                                }
+                                className={`px-2.5 py-1 rounded-md text-[11px] font-extrabold ${
+                                  currentCfg.style === st ? 'bg-amber-600 text-white shadow-sm' : 'text-slate-600'
+                                }`}
+                              >
+                                {st}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div className="flex flex-wrap gap-1.5">
+                          {MEAL_CONDITION_OPTIONS.map((cond) => {
+                            const active = (currentCfg.conditions || []).includes(cond);
+                            return (
+                              <button
+                                key={cond}
+                                type="button"
+                                onClick={() => {
+                                  const prevConds = currentCfg.conditions || [];
+                                  const nextConds = active
+                                    ? prevConds.filter((x) => x !== cond)
+                                    : [...prevConds, cond];
+                                  setFamilyProfile({
+                                    ...familyProfile,
+                                    mealConfig: {
+                                      ...familyProfile.mealConfig,
+                                      [mealType]: { ...currentCfg, conditions: nextConds }
+                                    }
+                                  });
+                                }}
+                                className={`px-2 py-1 rounded-lg text-[10px] font-extrabold ${
+                                  active ? 'bg-slate-900 text-white' : 'bg-stone-100 text-slate-600'
+                                }`}
+                              >
+                                {active ? `✓ ${cond}` : cond}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* 3. 가족 실시간 동기화 & Gemini AI 키 */}
+                <div className="bg-indigo-50/70 p-4 rounded-2xl border border-indigo-200/70 space-y-2.5">
+                  <p className="text-xs font-extrabold text-indigo-950">3. 부부 공유 저장소(npoint.io) &amp; AI 키 (선택)</p>
+                  <input
+                    type="url"
+                    value={cloudUrlInput}
+                    onChange={(e) => setCloudUrlInput(e.target.value)}
+                    placeholder="https://api.npoint.io/본인저장소ID"
+                    className="w-full bg-white px-3 py-2 rounded-xl border border-indigo-200 text-xs font-mono"
+                  />
+                  <input
+                    type="password"
+                    value={geminiApiKey}
+                    onChange={(e) => setGeminiApiKey(e.target.value)}
+                    placeholder="Gemini API 키 (AIzaSy...)"
+                    className="w-full bg-white px-3 py-2 rounded-xl border border-indigo-200 text-xs"
+                  />
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    const cleanUrl = cloudUrlInput.trim();
+                    setCloudUrl(cleanUrl);
+                    try {
+                      if (cleanUrl) localStorage.setItem('skf_custom_npoint_url', cleanUrl);
+                      else localStorage.removeItem('skf_custom_npoint_url');
+                      localStorage.setItem('skf_gemini_key', geminiApiKey.trim());
+                    } catch {}
+                    saveAndSync({
+                      familyProfile,
+                      inventory,
+                      logs: consumptionLogs,
+                      mealsByOffset,
+                      completedMealsByOffset,
+                      geminiApiKey: geminiApiKey.trim(),
+                      cloudUrl: cleanUrl
+                    });
+                    setIsSettingsModalOpen(false);
+                    showToast('모든 설정이 저장되었습니다!');
+                  }}
+                  className="w-full py-3 rounded-2xl bg-slate-900 text-white font-extrabold text-sm"
+                >
+                  저장 및 닫기
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* 식자재 직접 추가 모달 */}
+          {isAddModalOpen && (
+            <div onClick={() => setIsAddModalOpen(false)} className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
+              <div onClick={(e) => e.stopPropagation()} className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-extrabold text-slate-900">식자재 직접 추가</h3>
+                  <button onClick={() => setIsAddModalOpen(false)} className="p-1.5 text-slate-400">
+                    <Icon name="x" className="w-5 h-5" />
+                  </button>
+                </div>
+                <form onSubmit={handleAddManualItem} className="space-y-3.5">
+                  <div>
+                    <label className="text-xs font-bold text-slate-600 block mb-1">식재료 이름</label>
+                    <input type="text" required value={newItem.name} onChange={(e) => setNewItem({ ...newItem, name: e.target.value })} placeholder="예: 무농약 양파, 어린이 치즈" className="w-full px-3.5 py-2.5 rounded-2xl border border-stone-200 text-sm" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs font-bold text-slate-600 block mb-1">카테고리</label>
+                      <select value={newItem.category} onChange={(e) => setNewItem({ ...newItem, category: e.target.value })} className="w-full px-3 py-2.5 rounded-2xl border border-stone-200 text-sm bg-white">
+                        {['채소/과일', '정육/수산', '유제품/계란', '냉동/가공', '곡류/기타'].map((c) => <option key={c} value={c}>{c}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-xs font-bold text-slate-600 block mb-1">남은 소비기한 (일)</label>
+                      <input type="number" min="1" required value={newItem.daysLeft} onChange={(e) => setNewItem({ ...newItem, daysLeft: e.target.value })} className="w-full px-3.5 py-2.5 rounded-2xl border border-stone-200 text-sm" />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs font-bold text-slate-600 block mb-1">수량</label>
+                      <input type="number" step="any" min="0.1" required value={newItem.quantity} onChange={(e) => setNewItem({ ...newItem, quantity: e.target.value })} className="w-full px-3.5 py-2.5 rounded-2xl border border-stone-200 text-sm" />
+                    </div>
+                    <div>
+                      <label className="text-xs font-bold text-slate-600 block mb-1">단위</label>
+                      <select value={newItem.unit} onChange={(e) => setNewItem({ ...newItem, unit: e.target.value })} className="w-full px-3 py-2.5 rounded-2xl border border-stone-200 text-sm bg-white">
+                        {['개', 'g', 'ml', '모', '구', '봉', '팩', '송이'].map((u) => <option key={u} value={u}>{u}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                  <div className="pt-2 flex gap-2">
+                    <button type="button" onClick={() => setIsAddModalOpen(false)} className="flex-1 py-3 rounded-2xl bg-stone-100 text-slate-600 font-bold text-sm">취소</button>
+                    <button type="submit" className="flex-1 py-3 rounded-2xl bg-emerald-600 text-white font-extrabold text-sm">추가하기</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>
